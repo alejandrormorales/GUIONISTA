@@ -64,7 +64,19 @@ textarea{resize:vertical;min-height:70px}
 .side{width:270px;flex:none;background:var(--ui);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
 .side.hidden{display:none}
 .tabs{display:flex;padding:8px 8px 0;gap:4px}
-.tab{flex:1;padding:8px;border-radius:8px 8px 0 0;font-weight:500;color:var(--muted);border-bottom:2px solid transparent}
+.tab{flex:1;padding:8px 2px;border-radius:8px 8px 0 0;font-weight:500;font-size:12.5px;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap}
+.dup{border:1px solid #e0b25c;background:rgba(242,183,5,.10);border-radius:10px;padding:8px 9px;margin:4px 2px 10px}
+.dup h4{margin:0 0 4px;font-size:12px;font-weight:600}
+.dup p{margin:0 0 6px;font-size:11.5px;color:var(--muted);line-height:1.35}
+.dup .opt{display:flex;width:100%;text-align:left;gap:6px;align-items:baseline;padding:6px 8px;border-radius:7px;border:1px solid var(--line);background:var(--paper);margin-top:4px;font-family:'Courier Prime',Courier,monospace;font-size:12px;text-transform:uppercase}
+.dup .opt:hover{border-color:var(--accent)}
+.dup .opt small{margin-left:auto;font-family:Inter,sans-serif;color:var(--muted);text-transform:none;white-space:nowrap}
+.dup .skip{font-size:11px;color:var(--muted);margin-top:6px;text-decoration:underline}
+.sec{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:10px 8px 4px}
+.it .rn{opacity:0;padding:0 6px;border-radius:6px;color:var(--muted);font-size:13px;line-height:1.3}
+.it:hover .rn,.it:focus-within .rn{opacity:1}.it .rn:hover{background:var(--line);color:var(--ink)}
+@media (hover:none){.it .rn{opacity:.6}}
+.it.sub{padding-left:22px}
 .tab.on{color:var(--ink);border-bottom-color:var(--accent)}
 .list{overflow:auto;flex:1;padding:6px 6px 20px;border-top:1px solid var(--line)}
 .it{display:flex;gap:8px;width:100%;text-align:left;padding:8px;border-radius:8px;font-size:12.5px;line-height:1.35;align-items:baseline}
@@ -205,7 +217,7 @@ body.focus .scroll{padding-top:10px}
   <nav class="els" id="els"></nav>
   <div class="main">
     <aside class="side" id="side">
-      <div class="tabs"><button class="tab on" data-tab="sc">Escenas</button><button class="tab" data-tab="ch">Personajes</button><button class="tab" data-tab="nt">Notas<span class="cnt" id="ntCnt" hidden></span></button></div>
+      <div class="tabs"><button class="tab on" data-tab="sc">Escenas</button><button class="tab" data-tab="lc">Lugares</button><button class="tab" data-tab="ch">Personajes</button><button class="tab" data-tab="nt">Notas<span class="cnt" id="ntCnt" hidden></span></button></div>
       <div class="list" id="navList"></div>
     </aside>
     <div id="pgPill" hidden></div>
@@ -268,6 +280,8 @@ body.focus .scroll{padding-top:10px}
   <label class="check"><input type="checkbox" id="sBold"> Encabezados de escena en negrita</label>
   <label class="check"><input type="checkbox" id="sNums"> Numerar escenas</label>
   <label class="check"><input type="checkbox" id="sPages"> Mostrar saltos de página y página/minuto</label>
+  <label>Formato de los encabezados de escena (para las sugerencias)</label>
+  <select id="sHstyle"><option value="auto">Automático (según el guion)</option><option value="es">INT.DÍA.LUGAR</option><option value="us">INT. LUGAR - DÍA</option></select>
   <label class="check"><input type="checkbox" id="sDark"> Tema oscuro</label>
   <div class="row"><button class="btn primary" data-close>Listo</button></div>
 </div></div>
@@ -287,6 +301,15 @@ body.focus .scroll{padding-top:10px}
   </div>
   <p class="note">En el iPad sin teclado usa la barra de elementos de arriba. Escribir «INT.» o «EXT.» al principio de una acción la convierte en escena. Mientras escribes se guarda en este dispositivo y funciona sin conexión. Con Ctrl/⌘+S (o tocando el indicador de arriba) se sube a la carpeta «Guionista» de tu Google Drive. Si en Drive hay una versión más nueva subida desde otro dispositivo, te preguntará antes de tocar nada.</p>
   <div class="row"><button class="btn primary" data-close>Entendido</button></div>
+</div></div>
+
+<div class="modal" id="mdRename"><div class="card">
+  <h2 id="rnTitle">Renombrar</h2>
+  <p class="note" id="rnText" style="font-size:13.5px;margin-top:0"></p>
+  <input id="rnInput" list="rnList" autocomplete="off" spellcheck="false" style="text-transform:uppercase;font-family:'Courier Prime',Courier,monospace">
+  <datalist id="rnList"></datalist>
+  <p class="note" id="rnHint"></p>
+  <div class="row"><button class="btn" data-close>Cancelar</button><button class="btn primary" id="rnOk">Cambiar en todo el guion</button></div>
 </div></div>
 
 <div class="modal" id="mdConfirm"><div class="card">
@@ -330,7 +353,7 @@ const LS={
 };
 const jget=(k,d)=>{try{const v=LS.get(k);return v?JSON.parse(v):d}catch(e){return d}};
 
-let settings=Object.assign({paper:'a4',bold:false,nums:false,dark:false,pages:true},jget('gn.settings',{}));
+let settings=Object.assign({paper:'a4',bold:false,nums:false,dark:false,pages:true,hstyle:'auto'},jget('gn.settings',{}));
 function saveSettings(){LS.set('gn.settings',JSON.stringify(settings));applySettings()}
 function applySettings(){
   ed.classList.toggle('boldsc',!!settings.bold);
@@ -611,6 +634,38 @@ function recentChars(b){
   for(const x of charNames(b))if(!seen.includes(x))seen.push(x);
   return seen;
 }
+/* ---------------- encabezados de escena: INT.DÍA.LUGAR o INT. LUGAR - DÍA ---------------- */
+const TOD_ALL=['DÍA','NOCHE','TARDE','MAÑANA','AMANECER','ATARDECER','ANOCHECER','MEDIODÍA','MADRUGADA','CONTINUO','MÁS TARDE','MOMENTOS DESPUÉS'];
+const noAcc=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+const TOD_KEYS=new Set(TOD_ALL.map(t=>noAcc(t)));
+const IE_RE=/^(INT\.?\s*\/\s*EXT|EXT\.?\s*\/\s*INT|I\/E|INT|EXT|EST)(?=[.\s]|$)\.?\s*/;
+function parseHeading(x){
+  x=up(String(x)).trim();const m=x.match(IE_RE);if(!m)return null;
+  x=x.slice(0,m[0].length)+x.slice(m[0].length).replace(/\b(SR|SRA|SRTA|DR|DRA|DÑA|STA|STO|AVDA|PZA|PL|NTRA)\.\s*(?=\S)/g,'$1\u2024');
+  const ie=m[1].replace(/\s+/g,'').replace(/\.(?=\/)/,'.');let rest=x.slice(m[0].length).trim(),tod='',loc=rest,style='?';
+  const m2=rest.match(/^([^.]+?)\.\s*(.*)$/);
+  if(m2&&TOD_KEYS.has(noAcc(m2[1].trim()))){tod=m2[1].trim();loc=m2[2];style='es'}
+  else{const d=rest.lastIndexOf(' - ');if(d>=0&&TOD_KEYS.has(noAcc(rest.slice(d+3).trim()))){tod=rest.slice(d+3).trim();loc=rest.slice(0,d);style='us'}else if(TOD_KEYS.has(noAcc(rest.replace(/\.$/,'')))){tod=rest.replace(/\.$/,'');loc='';style='es'}}
+  loc=loc.replace(/\s*\.\s*/g,'.').replace(/^\.+|\.+$/g,'').replace(/\s+/g,' ').trim();
+  return{ie,tod,loc,style,main:loc.split('.')[0].trim()};
+}
+function buildHeading(h,style){
+  const ie=h.ie.replace(/\/$/,'');h=Object.assign({},h,{loc:h.loc.replace(/\u2024/g,'. ')});
+  if(style==='us')return ie+'. '+h.loc+(h.tod?' - '+h.tod:'');
+  return ie+'.'+(h.tod?h.tod+'.':'')+h.loc;
+}
+function headingStyle(){
+  if(settings.hstyle==='es'||settings.hstyle==='us')return settings.hstyle;
+  let es=0,us=0;for(const b of ed.children)if(b.dataset.t==='s'){const h=parseHeading(textOf(b));if(h){if(h.style==='es')es++;else if(h.style==='us')us++}}
+  return us>es?'us':'es';
+}
+function sceneStats(){
+  const locs=new Map(),tods=new Map();
+  [...ed.children].forEach((b,i)=>{if(b.dataset.t!=='s')return;const h=parseHeading(textOf(b));if(!h)return;
+    if(h.loc){const v=locs.get(h.loc)||{n:0,i,idx:[]};v.n++;v.idx.push(i);locs.set(h.loc,v)}
+    if(h.tod){tods.set(h.tod,(tods.get(h.tod)||0)+1)}});
+  return{locs,tods};
+}
 function locations(){
   const set=new Map();
   for(const b of ed.children){if(b.dataset.t!=='s')continue;const x=up(textOf(b));const m=x.match(SCENE_RE);if(!m)continue;
@@ -625,6 +680,22 @@ function updateAC(){
   if(c.off!==raw.length)return hideAC();
   let list=[];
   if(t==='c'){list=(x?charNames(b).filter(n=>n.startsWith(x)&&n!==x):recentChars(b))}
+  else if(t==='s'&&headingStyle()==='es'){
+    const m=x.match(/^(INT\.\/EXT|INT|EXT|I\/E)\./);
+    if(!m){list=['INT.','EXT.','INT./EXT.'].filter(p=>p.startsWith(x)&&p!==x)}
+    else{
+      const pre=m[0],rest=x.slice(pre.length),k=rest.indexOf('.');
+      const st=sceneStats();
+      if(k<0){
+        const used=[...st.tods.entries()].sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
+        const all=[];for(const t of used.concat(TOD_ALL))if(!all.some(u=>noAcc(u)===noAcc(t)))all.push(t);
+        list=all.filter(o=>noAcc(o).startsWith(noAcc(rest))).map(o=>pre+o+'.');
+      }else{
+        const tod=rest.slice(0,k),lp=rest.slice(k+1).replace(/^\s+/,'');
+        list=[...st.locs.entries()].sort((a,b)=>b[1].n-a[1].n).map(e=>e[0].replace(/\u2024/g,'. ')).filter(l=>noAcc(l).startsWith(noAcc(lp))&&l!==lp).map(l=>pre+tod+'.'+l);
+      }
+    }
+  }
   else if(t==='s'){
     const m=x.match(SCENE_RE);
     if(!m||(x.length<=m[0].length&&!/\s$/.test(x))){list=['INT. ','EXT. ','INT./EXT. '].filter(p=>p.startsWith(x)&&p.trim()!==x.trim())}
@@ -648,7 +719,7 @@ function moveAC(d){acSel=(acSel+d+acItems.length)%acItems.length;[...ac.children
 function acceptAC(){
   const it=acItems[acSel],b=acBlock;if(!it||!b)return hideAC();
   structural(()=>{setText(b,it);setCaret(idx(b),it.length)});
-  hideAC();if(/[ ]$/.test(it))updateAC();
+  hideAC();if(/[ .]$/.test(it))updateAC();
 }
 
 /* ---------------- eventos del editor ---------------- */
@@ -690,7 +761,7 @@ ed.addEventListener('beforeinput',e=>{
 ed.addEventListener('input',()=>{
   normalize();
   const c=getCaret();
-  if(c&&c.b.dataset.t==='a'){const x=textOf(c.b);if(x.length<16&&/^(INT|EXT|INT\.?\/EXT|I\/E)\.\s/i.test(x)){c.b.dataset.t='s';}}
+  if(c&&c.b.dataset.t==='a'){const x=textOf(c.b);if((x.length<16&&/^(INT|EXT|INT\.?\/EXT|I\/E)\.\s/i.test(x))||(x.length<26&&/^(INT|EXT|INT\.\/EXT)\.\s?(D[IÍ]A|NOCHE|TARDE|MAÑANA|AMANECER|ATARDECER|ANOCHECER|MEDIOD[IÍ]A|MADRUGADA)\./i.test(x))){c.b.dataset.t='s';}}
   changed(true);updateUI();
 });
 const MIME='application/x-guionista';
@@ -831,14 +902,98 @@ function renderNav(){
     if(!n)box.innerHTML='<div class="empty">Aún no hay escenas. Escribe un encabezado como <b>INT. COCINA - NOCHE</b> y aparecerá aquí.</div>';
   }else if(navTab==='nt'){
     renderNotesNav(box);
+  }else if(navTab==='lc'){
+    renderPlacesNav(box);
   }else{
-    const cnt=new Map();arr.forEach((b,i)=>{if(b.t==='c'){const nm=up(b.x).replace(/\s*\(.*\)\s*$/,'').trim();if(!nm)return;const v=cnt.get(nm)||{n:0,i};v.n++;cnt.set(nm,v)}});
+    const cnt=charCounts();
+    renderDups(box,'ch',dupGroups([...cnt.entries()].map(([k,v])=>({k,n:v.n})),charSim));
     const list=[...cnt.entries()].sort((a,b)=>b[1].n-a[1].n);
-    list.forEach(([nm,v])=>{const it=document.createElement('button');it.className='it';it.dataset.i=v.i;it.innerHTML='<span class="t"></span><span class="pg"></span>';it.children[0].textContent=nm;it.children[1].textContent=v.n+(v.n===1?' interv.':' interv.');box.appendChild(it)});
+    list.forEach(([nm,v])=>box.appendChild(navRow(nm,v.n+' interv.',v.i,'ch')));
     if(!list.length)box.innerHTML='<div class="empty">Los personajes aparecerán aquí cuando escribas diálogos.</div>';
   }
 }
+/* ---------------- unificar lugares y personajes ---------------- */
+const baseName=x=>up(x).replace(/\s*\(.*\)\s*$/,'').trim();
+const extOf=x=>{const m=up(x).match(/\(.*\)\s*$/);return m?m[0].trim():''};
+function charCounts(){const cnt=new Map();[...ed.children].forEach((b,i)=>{if(b.dataset.t!=='c')return;const nm=baseName(textOf(b));if(!nm)return;const v=cnt.get(nm)||{n:0,i};v.n++;cnt.set(nm,v)});return cnt}
+function lev(a,b){if(a===b)return 0;const m=a.length,n=b.length;if(!m||!n)return m||n;let pr=Array.from({length:n+1},(_,j)=>j);for(let i=1;i<=m;i++){const cu=[i];for(let j=1;j<=n;j++)cu[j]=Math.min(pr[j]+1,cu[j-1]+1,pr[j-1]+(a[i-1]===b[j-1]?0:1));pr=cu}return pr[n]}
+const looseKey=s=>noAcc(up(s).replace(/\u2024/g,' ')).replace(/\b(DE|DEL|LA|EL|LOS|LAS|SR|SRA|SRTA|DON|DOÑA|DONA)\b\.?/g,' ').replace(/[^A-Z0-9Ñ]/g,'');
+function placeSim(a,b){const ka=looseKey(a),kb=looseKey(b);if(!ka||!kb)return false;if(ka===kb)return true;const L=Math.max(ka.length,kb.length);return L>=6&&lev(ka,kb)/L<=0.12}
+function charSim(a,b){const da=(a.match(/\d+/g)||[]).join(','),db=(b.match(/\d+/g)||[]).join(',');if(da!==db)return false;const ka=noAcc(a).replace(/[^A-Z0-9Ñ]/g,''),kb=noAcc(b).replace(/[^A-Z0-9Ñ]/g,'');if(ka===kb)return true;const L=Math.max(ka.length,kb.length);return L>=6&&lev(ka,kb)/L<=0.15}
+let dupIgnore=new Set(jget('gn.dupIgnore',[]));
+function dupGroups(items,sim){
+  const groups=[],used=new Set();
+  for(let i=0;i<items.length;i++){if(used.has(i))continue;const g=[items[i]];
+    for(let j=i+1;j<items.length;j++)if(!used.has(j)&&g.some(x=>sim(x.k,items[j].k))){g.push(items[j]);used.add(j)}
+    if(g.length>1){g.sort((a,b)=>b.n-a.n);const key=g.map(x=>x.k).sort().join('|');if(!dupIgnore.has(key))groups.push({key,items:g})}}
+  return groups;
+}
+function renderDups(box,kind,groups,title){
+  for(const g of groups){
+    const d=document.createElement('div');d.className='dup';
+    d.innerHTML='<h4></h4><p>¿Son lo mismo escrito distinto? Toca la forma buena y cambio las demás en todo el guion.</p>';
+    d.querySelector('h4').textContent=title||(kind==='ch'?'Posible personaje repetido':'Posible lugar repetido');
+    for(const it of g.items){const b=document.createElement('button');b.className='opt';b.innerHTML='<span></span><small></small>';b.children[0].textContent=String(it.k).replace(/\u2024/g,'. ');b.children[1].textContent=it.n+(kind==='ch'?' interv.':(kind==='tod'?' esc.':' esc.'));
+      b.onclick=()=>{const others=g.items.filter(x=>x!==it).map(x=>x.k);confirmDlg('Unificar','Se cambiará '+others.map(o=>'«'+String(o).replace(/\u2024/g,'. ')+'»').join(', ')+' por «'+String(it.k).replace(/\u2024/g,'. ')+'» en todo el guion. Puedes deshacerlo con Ctrl/⌘+Z.','Unificar',()=>{commit();for(const o of others)applyRename(kind,o,it.k,true);finishRename(others.length)})};d.appendChild(b)}
+    const sk=document.createElement('button');sk.className='skip';sk.textContent='No son lo mismo, no volver a preguntar';sk.onclick=()=>{dupIgnore.add(g.key);LS.set('gn.dupIgnore',JSON.stringify([...dupIgnore]));renderNav()};d.appendChild(sk);
+    box.appendChild(d);
+  }
+}
+function navRow(label,meta,i,kind,sub){
+  const it=document.createElement('div');it.className='it'+(sub?' sub':'');it.dataset.i=i;it.setAttribute('role','button');it.tabIndex=0;
+  it.innerHTML='<span class="t"></span><span class="pg"></span><button class="rn" title="Renombrar o unificar">✎</button>';
+  it.children[0].textContent=label.replace(/\u2024/g,'. ');it.children[1].textContent=meta;const rn=it.querySelector('.rn');rn.dataset.rn=label;rn.dataset.kind=kind;return it;
+}
+function renderPlacesNav(box){
+  const st=sceneStats();
+  if(!st.locs.size){box.innerHTML='<div class="empty">Los lugares aparecerán aquí cuando escribas encabezados de escena (INT.DÍA.LUGAR).</div>';return}
+  // momentos del día escritos distinto (DIA / DÍA)
+  renderDups(box,'tod',dupGroups([...st.tods.entries()].map(([k,n])=>({k,n})),(a,b)=>noAcc(a)===noAcc(b)),'Momento del día escrito distinto');
+  // lugares principales y completos parecidos
+  const mains=new Map();for(const [loc,v] of st.locs){const m=loc.split('.')[0];const x=mains.get(m)||{n:0,i:v.i,subs:[]};x.n+=v.n;x.subs.push([loc,v]);if(v.i<x.i)x.i=v.i;mains.set(m,x)}
+  renderDups(box,'main',dupGroups([...mains.entries()].map(([k,v])=>({k,n:v.n})),placeSim));
+  renderDups(box,'loc',dupGroups([...st.locs.entries()].filter(([k])=>k.includes('.')).map(([k,v])=>({k,n:v.n})),(a,b)=>a.split('.')[0]===b.split('.')[0]&&placeSim(a,b)));
+  const h=document.createElement('div');h.className='sec';h.textContent=st.locs.size+' lugares · '+[...st.locs.values()].reduce((a,v)=>a+v.n,0)+' escenas';box.appendChild(h);
+  for(const [m,x] of [...mains.entries()].sort((a,b)=>b[1].n-a[1].n)){
+    const direct=x.subs.find(([l])=>l===m);
+    box.appendChild(navRow(m,x.n+' esc.',x.i,'main'));
+    for(const [l,v] of x.subs.sort((a,b)=>b[1].n-a[1].n)){if(l===m)continue;box.appendChild(navRow('· '+l.slice(m.length+1),v.n+' esc. · p. '+[...new Set(v.idx.map(pageOf))].join(', '),v.i,'loc:'+l,true))}
+    void direct;
+  }
+}
+function applyRename(kind,from,to,silent){
+  to=up(to).trim();if(kind!=='ch')to=to.replace(/\b(SR|SRA|SRTA|DR|DRA|DÑA|STA|STO|AVDA|PZA|PL|NTRA)\.\s*(?=\S)/g,'$1\u2024');if(!to||to===from)return 0;let n=0;
+  for(const b of ed.children){
+    const t=b.dataset.t,x=textOf(b);
+    if(kind==='ch'&&t==='c'){if(baseName(x)===from){const e=extOf(x);setText(b,to+(e?' '+e:''));n++}continue}
+    if(t!=='s')continue;const h=parseHeading(x);if(!h)continue;
+    const style=h.style==='us'?'us':'es';
+    if(kind==='tod'&&h.tod===from){h.tod=to;setText(b,buildHeading(h,style));n++}
+    else if(kind==='main'&&h.main===from){h.loc=to+h.loc.slice(from.length);setText(b,buildHeading(h,style));n++}
+    else if(kind==='loc'&&h.loc===from){h.loc=to.replace(/\s*\.\s*/g,'.');setText(b,buildHeading(h,style));n++}
+  }
+  return n;
+}
+let renaming=null;
+function finishRename(n){normalize();commit();changed(false);stats();renderNav();toast(n?'Hecho. Si no te convence, Ctrl/⌘+Z lo deshace.':'No había nada que cambiar.')}
+function openRename(kind,label){
+  let from=label,k=kind,opts=[];
+  if(kind.startsWith('loc:')){k='loc';from=kind.slice(4)}
+  if(k==='ch')opts=[...charCounts().keys()];
+  else{const st=sceneStats();opts=k==='main'?[...new Set([...st.locs.keys()].map(l=>l.split('.')[0]))]:[...st.locs.keys()]}
+  renaming={k,from};
+  $('#rnTitle').textContent=k==='ch'?'Renombrar personaje':'Renombrar lugar';
+  $('#rnText').textContent='«'+from.replace(/\u2024/g,'. ')+'» → escribe el nombre nuevo. Si eliges uno que ya existe, se unifican.';
+  $('#rnHint').textContent=k==='ch'?'Se cambia en todas las intervenciones; las extensiones como (V.O.) se conservan. Los nombres dentro de la acción no se tocan.':(k==='main'?'Se cambia en todos los encabezados de este lugar, también en sus sublugares (por ejemplo .SALÓN).':'Se cambia en todos los encabezados con este lugar exacto.');
+  $('#rnList').innerHTML='';opts.filter(o=>o!==from).forEach(o=>{const op=document.createElement('option');op.value=o.replace(/\u2024/g,'. ');$('#rnList').appendChild(op)});
+  $('#rnInput').value=from.replace(/\u2024/g,'. ');openModal('mdRename');setTimeout(()=>{$('#rnInput').focus();$('#rnInput').select()},50);
+}
+function doRename(){if(!renaming)return;const to=$('#rnInput').value;closeModal('mdRename');const {k,from}=renaming;renaming=null;commit();const n=applyRename(k,from,to);finishRename(n)}
+$('#rnOk').onclick=doRename;
+$('#rnInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();doRename()}});
 $('#navList').addEventListener('click',e=>{
+  const rn=e.target.closest('.rn');if(rn){e.stopPropagation();openRename(rn.dataset.kind,rn.dataset.rn);return}
+  if(e.target.closest('.dup'))return;
   const ok=e.target.closest('[data-done]');
   if(ok){const b=ed.children[+ok.dataset.i];if(b){const arr=getNotes(b);const n=arr.find(x=>x.id===ok.dataset.done);if(n){commit();n.done=!n.done;setNotes(b,arr);commit();changed(false);stats()}}return}
   if(e.target.closest('#showDone')){showDone=e.target.closest('#showDone').checked;renderNav();return}
@@ -1449,14 +1604,14 @@ document.addEventListener('click',e=>{
     case'fountain':exportFountain();break;
     case'copy':copyFountain();break;
     case'title':$('#fTitle').value=cur.title==='Sin título'?'':cur.title;$('#fAuthor').value=cur.author||'';$('#fContact').value=cur.contact||'';$('#fTitlePage').checked=cur.titlePage!==false;openModal('mdTitle');break;
-    case'settings':$('#sPaper').value=settings.paper;$('#sBold').checked=settings.bold;$('#sNums').checked=settings.nums;$('#sDark').checked=settings.dark;$('#sPages').checked=settings.pages!==false;openModal('mdSettings');break;
+    case'settings':$('#sPaper').value=settings.paper;$('#sBold').checked=settings.bold;$('#sNums').checked=settings.nums;$('#sDark').checked=settings.dark;$('#sPages').checked=settings.pages!==false;$('#sHstyle').value=settings.hstyle||'auto';openModal('mdSettings');break;
     case'import':fileIn.click();break;
     case'help':openModal('mdHelp');break;
     case'drive':if(driveOn())confirmDlg('Google Drive','Conectado'+(LS.get('gn.email')?' como '+LS.get('gn.email'):'')+'. Los guiones se suben a la carpeta «Guionista» de tu Drive con Ctrl/⌘+S. Si desconectas, la app deja de subirlos; no se borra nada.','Desconectar',disconnectDrive);else uploadNow();break;
   }
 });
 $('#bSaveTitle').onclick=()=>{cur.title=$('#fTitle').value.trim()||'Sin título';cur.author=$('#fAuthor').value.trim();cur.contact=$('#fContact').value.replace(/\s+$/,'');cur.titlePage=$('#fTitlePage').checked;$('#docTitle').value=cur.title;dirty=true;flushSave();closeModal('mdTitle')};
-['sPaper','sBold','sNums','sDark','sPages'].forEach(id=>$('#'+id).addEventListener('change',()=>{settings.paper=$('#sPaper').value;settings.bold=$('#sBold').checked;settings.nums=$('#sNums').checked;settings.dark=$('#sDark').checked;settings.pages=$('#sPages').checked;saveSettings();renderMarks();updateStatusPos(lastCaret.i)}));
+['sPaper','sBold','sNums','sDark','sPages','sHstyle'].forEach(id=>$('#'+id).addEventListener('change',()=>{settings.hstyle=$('#sHstyle').value;settings.paper=$('#sPaper').value;settings.bold=$('#sBold').checked;settings.nums=$('#sNums').checked;settings.dark=$('#sDark').checked;settings.pages=$('#sPages').checked;saveSettings();renderMarks();updateStatusPos(lastCaret.i)}));
 function openModal(id){$('#'+id).classList.add('open')}
 function closeModal(id){$('#'+id).classList.remove('open')}
 document.querySelectorAll('.modal').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m||e.target.closest('[data-close]'))m.classList.remove('open')})});
