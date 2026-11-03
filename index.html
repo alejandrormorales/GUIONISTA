@@ -426,7 +426,7 @@ const TYPES={
   h:{n:'Plano',ph:'PRIMER PLANO'},
   m:{n:'Bloque',ph:'SECUENCIA DE MONTAJE'}
 };
-const APP_VERSION='1.5';
+const APP_VERSION='1.5.1';
 const ORDER=['s','a','c','p','d','t','h','m'];
 const ENTER={s:'a',a:'a',c:'d',p:'d',d:'a',t:'s',h:'a',m:'a'};
 const TAB={a:'c',c:'t',d:'p',p:'d',s:'a',t:'s',h:'a',m:'s'};
@@ -1380,20 +1380,30 @@ function parseFDX(xml){
 
 /* ---------------- PDF ---------------- */
 function pdfSafe(s){return s.replace(/[“”«»„]/g,'"').replace(/[‘’‚]/g,"'").replace(/—/g,'--').replace(/–/g,'-').replace(/…/g,'...').replace(/\u00a0/g,' ')}
+/* fuente del PDF: Courier Prime incrustada, para que se vea igual en cualquier visor */
+let pdfFonts=null;
+async function loadPdfFonts(){
+  if(pdfFonts)return pdfFonts;
+  const get=async u=>{const r=await fetch(u);if(!r.ok)throw new Error('font');const b=new Uint8Array(await r.arrayBuffer());let s='';for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
+  pdfFonts={r:await get('fonts/CourierPrime-Regular.ttf'),b:await get('fonts/CourierPrime-Bold.ttf')};return pdfFonts;
+}
+let PF='courier';
 function makePDF(s){
   const {jsPDF}=window.jspdf;
   const fmt=settings.paper==='letter'?'letter':'a4';
   const doc=new jsPDF({unit:'pt',format:fmt,compress:true});
+  PF='courier';
+  if(pdfFonts){try{doc.addFileToVFS('CourierPrime-Regular.ttf',pdfFonts.r);doc.addFont('CourierPrime-Regular.ttf','CourierPrime','normal');doc.addFileToVFS('CourierPrime-Bold.ttf',pdfFonts.b);doc.addFont('CourierPrime-Bold.ttf','CourierPrime','bold');PF='CourierPrime'}catch(e){PF='courier'}}
   const H=doc.internal.pageSize.getHeight(),Wp=doc.internal.pageSize.getWidth();
   const L=linesPerPage();
   const {pages}=layout(parseBody(s.body),{L,bold:settings.bold});
   const left=108,CW=7.2,right=left+60*CW,top=72;
   doc.setProperties({title:s.title||'Guion',author:s.author||'',creator:'Guionista'});
-  doc.setFont('courier','normal');doc.setFontSize(12);
+  doc.setFont(PF,'normal');doc.setFontSize(12);
   let first=true;
   if(s.titlePage&&((s.title&&s.title!=='Sin título')||s.author)){
     const cx=left+30*CW;let y=Math.round(H*0.36);
-    doc.setFont('courier','normal');
+    doc.setFont(PF,'normal');
     wrap(pdfSafe(up(s.title&&s.title!=='Sin título'?s.title:'')),50).forEach(l=>{doc.text(l,cx,y,{align:'center'});y+=12});
     if(s.author){y+=36;doc.text('Escrito por',cx,y,{align:'center'});y+=24;wrap(pdfSafe(s.author),50).forEach(l=>{doc.text(l,cx,y,{align:'center'});y+=12})}
     if(s.contact){const cl=s.contact.split('\n').map(pdfSafe);let yy=H-72-cl.length*12+9;cl.forEach(l=>{doc.text(l,left,yy);yy+=12})}
@@ -1401,15 +1411,15 @@ function makePDF(s){
   }
   pages.forEach((pg,pi)=>{
     if(!first)doc.addPage();first=false;
-    doc.setFont('courier','normal');
+    doc.setFont(PF,'normal');
     if(pi>0)doc.text((pi+1)+'.',right,48,{align:'right'});
     for(const ln of pg){
       const y=top+ln.y*12+9;
-      doc.setFont('courier',ln.bold?'bold':'normal');
+      doc.setFont(PF,ln.bold?'bold':'normal');
       const tx=pdfSafe(ln.x);
       if(ln.right)doc.text(tx,right,y,{align:'right'});else doc.text(tx,left+ln.col*CW,y);
       if(ln.ul&&!ln.right){doc.setLineWidth(0.6);doc.line(left+ln.col*CW,y+2,left+ln.col*CW+doc.getTextWidth(tx),y+2)}
-      if(ln.num&&settings.nums){doc.setFont('courier',ln.bold?'bold':'normal');doc.text(String(ln.num),left-36,y,{align:'right'});doc.text(String(ln.num),right+20,y)}
+      if(ln.num&&settings.nums){doc.setFont(PF,ln.bold?'bold':'normal');doc.text(String(ln.num),left-36,y,{align:'right'});doc.text(String(ln.num),right+20,y)}
     }
   });
   return doc.output('arraybuffer');
@@ -1431,7 +1441,7 @@ async function saveFile(filename,data,mime){
 async function exportPDF(){
   flushSave();
   if(!window.jspdf){toast('Cargando el generador de PDF… inténtalo de nuevo en un momento.');return}
-  try{const buf=makePDF(cur);await saveFile(safeName(cur.title)+'.pdf',buf,'application/pdf')}
+  try{try{await loadPdfFonts()}catch(e){}const buf=makePDF(cur);await saveFile(safeName(cur.title)+'.pdf',buf,'application/pdf')}
   catch(e){console.error(e);toast('Error al generar el PDF.')}
 }
 async function exportFountain(){flushSave();await saveFile(safeName(cur.title)+'.fountain.txt',toFountain(cur),'text/plain')}
