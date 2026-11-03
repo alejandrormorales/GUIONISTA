@@ -228,6 +228,7 @@ body.focus .scroll{padding-top:10px}
   <button data-act="settings">Ajustes</button>
   <button data-act="import">Importar Fountain / FDX / TXT…</button>
   <hr>
+  <button data-act="drive" id="mDrive">Google Drive…</button>
   <button data-act="help">Atajos y ayuda</button>
 </div>
 
@@ -280,11 +281,11 @@ body.focus .scroll{padding-top:10px}
     <kbd>Alt/⌥ + 1…7</kbd><span>Escena, Acción, Personaje, Acotación, Diálogo, Transición, Plano</span>
     <kbd>Alt/⌥ + N</kbd><span>Añadir una nota en la línea actual (o sobre el texto seleccionado)</span>
     <kbd>Ctrl/⌘ + Shift + F</kbd><span>Modo concentración (Esc para salir)</span>
-    <kbd>Ctrl/⌘ + S</kbd><span>Guardar ya (cuando conectes Google Drive, también lo subirá a la nube)</span>
+    <kbd>Ctrl/⌘ + S</kbd><span>Guardar y subir a Google Drive (también tocando el indicador de Drive de arriba)</span>
     <kbd>Ctrl/⌘ + Z</kbd><span>Deshacer (Shift para rehacer)</span>
     <kbd>↑ ↓</kbd><span>Moverse por las sugerencias de personajes y lugares</span>
   </div>
-  <p class="note">En el iPad sin teclado usa la barra de elementos de arriba. Escribir «INT.» o «EXT.» al principio de una acción la convierte en escena. Todo se guarda solo en este dispositivo mientras escribes. Funciona sin conexión.</p>
+  <p class="note">En el iPad sin teclado usa la barra de elementos de arriba. Escribir «INT.» o «EXT.» al principio de una acción la convierte en escena. Mientras escribes se guarda en este dispositivo y funciona sin conexión. Con Ctrl/⌘+S (o tocando el indicador de arriba) se sube a la carpeta «Guionista» de tu Google Drive. Si en Drive hay una versión más nueva subida desde otro dispositivo, te preguntará antes de tocar nada.</p>
   <div class="row"><button class="btn primary" data-close>Entendido</button></div>
 </div></div>
 
@@ -1129,13 +1130,8 @@ function flushSave(manual){
   if(manual)uploadNow();else updCloud();
 }
 const unsent=s=>!!s&&(s.synced!==s.updated);
-function uploadNow(){
-  if(!cur)return;
-  if(!db){toast(hasRuntime?'Sin conexión a la nube: está guardado solo en este dispositivo.':'De momento se guarda en este dispositivo. La nube en Google Drive llegará en la siguiente versión.');return}
-  syncNow(true);
-}
 function backupCopy(s){
-  const c=Object.assign({},s,{id:newId(),title:(s.title||'Sin título')+' (copia local)',synced:undefined,remoteN:undefined,updated:Date.now()});
+  const c=Object.assign({},s,{id:newId(),title:(s.title||'Sin título')+' (copia local)',synced:undefined,remoteN:undefined,fileId:undefined,updated:Date.now()});
   saveLocal(c);LS.set('gn.last',cur?cur.id:c.id);return c;
 }
 function openScript(s){
@@ -1152,91 +1148,215 @@ document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&!e.altKey&&(e
 $('#docTitle').addEventListener('input',()=>{cur.title=$('#docTitle').value.trim()||'Sin título';dirty=true;markDirty()});
 $('#docTitle').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();ed.focus();setCaret(lastCaret.i,lastCaret.off)}});
 
-/* ---------------- nube privada (db) ---------------- */
-let db=null,uid=null,pushing=false,pushAgain=false;
-function setCloud(state,text){const c=$('#cloud');c.className='cloud '+(state||'')+(db?' click':'');c.querySelector('span').textContent=text}
+/* ---------------- nube: Google Drive ---------------- */
+const GCLIENT='84972572825-4lfg7jdqg1qi9td77ga8uf0550t070al.apps.googleusercontent.com';
+const GSCOPE='https://www.googleapis.com/auth/drive.file';
+const GAPI='https://www.googleapis.com/drive/v3',GUP='https://www.googleapis.com/upload/drive/v3';
+let db=null,pushing=false,pushAgain=false,tokenClient=null,tok=jget('gn.tok',null),forceFor=null;
+const driveOn=()=>LS.get('gn.drive')==='1';
+const tokenOk=()=>!!(tok&&tok.t&&tok.exp>Date.now()+60000);
+function setCloud(state,text){const c=$('#cloud');c.className='cloud click '+(state||'');c.querySelector('span').textContent=text}
 let cloudConflict=false;
 function updCloud(){
-  if(!db||pushing)return;
-  if(cloudConflict)setCloud('err','Versión distinta en la nube');
+  if(pushing)return;
+  if(!driveOn())return setCloud('','Conectar Google Drive');
+  if(!tokenOk())return setCloud('err','Drive · toca para reconectar');
+  if(cloudConflict)setCloud('err','Versión distinta en Drive');
   else if(dirty||unsent(cur))setCloud('pend','Sin subir · Ctrl/⌘+S');
-  else setCloud('ok','En la nube');
+  else setCloud('ok','En Drive');
 }
 $('#cloud').addEventListener('mousedown',e=>e.preventDefault());
-$('#cloud').addEventListener('click',()=>{if(db)flushSave(true);else uploadNow()});
-const coll=()=>db.collection('data/users/'+uid);
-const CH=90000;
+$('#cloud').addEventListener('click',()=>flushSave(true));
+
+/* acceso a Google (ventana de Google; tiene que abrirse desde un clic o una tecla) */
+function loadGIS(){
+  if(window.google&&google.accounts&&google.accounts.oauth2)return Promise.resolve();
+  if(loadGIS.p)return loadGIS.p;
+  loadGIS.p=new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.async=true;s.onload=()=>res();s.onerror=()=>{loadGIS.p=null;rej(new Error('gis'))};document.head.appendChild(s)});
+  return loadGIS.p;
+}
+function authorize(){
+  return new Promise((res,rej)=>{
+    if(tokenOk())return res(tok.t);
+    if(!(window.google&&google.accounts&&google.accounts.oauth2)){loadGIS().catch(()=>{});return rej({code:'gis'})}
+    if(!tokenClient)tokenClient=google.accounts.oauth2.initTokenClient({client_id:GCLIENT,scope:GSCOPE,callback:()=>{}});
+    tokenClient.callback=r=>{
+      if(!r||r.error||!r.access_token)return rej({code:'auth',r});
+      tok={t:r.access_token,exp:Date.now()+((+r.expires_in||3600)-60)*1000};LS.set('gn.tok',JSON.stringify(tok));res(tok.t);
+    };
+    tokenClient.error_callback=e=>rej({code:'popup',e});
+    const o={prompt:driveOn()?'':'consent'};const em=LS.get('gn.email');if(em)o.login_hint=em;
+    tokenClient.requestAccessToken(o);
+  });
+}
+function authError(e){
+  if(e&&e.code==='gis')toast(navigator.onLine?'Cargando el acceso de Google… vuelve a intentarlo en un momento.':'Sin conexión a internet. Lo tienes guardado en este dispositivo.');
+  else if(e&&e.code==='popup')toast('No se pudo abrir la ventana de Google. Si estás en el iPad, prueba desde Safari o permite las ventanas emergentes.');
+  else toast('No se pudo conectar con Google Drive.');
+  updCloud();
+}
+async function gfetch(url,opt){
+  opt=opt||{};if(!tokenOk())throw{code:'auth'};
+  const r=await fetch(url,Object.assign({},opt,{headers:Object.assign({},opt.headers||{},{Authorization:'Bearer '+tok.t})}));
+  if(r.status===401){tok=null;LS.del('gn.tok');throw{code:'auth'}}
+  if(!r.ok){let t='';try{t=await r.text()}catch(_){}throw{code:'http',status:r.status,text:t}}
+  return r;
+}
+async function folderId(){
+  const c=LS.get('gn.folder');if(c)return c;
+  const q=encodeURIComponent("name='Guionista' and mimeType='application/vnd.google-apps.folder' and trashed=false");
+  const r=await(await gfetch(GAPI+'/files?q='+q+'&fields=files(id)&spaces=drive')).json();
+  let id=r.files&&r.files[0]&&r.files[0].id;
+  if(!id){const m=await(await gfetch(GAPI+'/files?fields=id',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'Guionista',mimeType:'application/vnd.google-apps.folder'})})).json();id=m.id}
+  LS.set('gn.folder',id);return id;
+}
+
+/* formato del archivo: Fountain normal + copia exacta para Guionista en un comentario al final */
+function fnv(s){let h=0x811c9dc5;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return(h>>>0).toString(16)}
+function b64e(str){const u=new TextEncoder().encode(str);let s='';for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s)}
+function b64d(b){const s=atob(b);const u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return new TextDecoder().decode(u)}
+function encodeFile(s){
+  const f=toFountain(s);
+  const data={v:1,title:s.title||'',author:s.author||'',contact:s.contact||'',titlePage:s.titlePage!==false,updated:s.updated,body:s.body||''};
+  return f+'\n/* GUIONISTA-DATA '+fnv(f)+'\n'+b64e(JSON.stringify(data)).replace(/.{1,76}/g,'$&\n')+'*/\n';
+}
+function decodeFile(txt){
+  txt=txt.replace(/\r\n?/g,'\n');
+  const k=txt.lastIndexOf('\n/* GUIONISTA-DATA ');
+  if(k>=0){
+    const f=txt.slice(0,k),m=txt.slice(k).match(/GUIONISTA-DATA ([0-9a-f]+)\n([\s\S]*?)\*\//);
+    if(m&&m[1]===fnv(f)){try{const d=JSON.parse(b64d(m[2].replace(/\s+/g,'')));if(d&&typeof d.body==='string')return d}catch(e){}}
+    txt=f;
+  }
+  const r=parseFountain(txt);
+  return{external:true,title:(r.meta.title||'').replace(/[_*]/g,'').trim(),author:(r.meta.author||r.meta.authors||'').trim(),contact:(r.meta.contact||'').trim(),titlePage:true,body:encBlocks(r.blocks)};
+}
+function multipart(meta,content){
+  const B='gn'+Math.random().toString(36).slice(2);
+  return{type:'multipart/related; boundary='+B,body:'--'+B+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(meta)+'\r\n--'+B+'\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n'+content+'\r\n--'+B+'--'};
+}
+const fileIdOf=s=>s.fileId||(remoteKnown[s.id]&&remoteKnown[s.id].fileId)||null;
 async function pushRemote(s){
-  const body=s.body||'';const parts=[];for(let k=0;k<body.length||k===0;k+=CH){parts.push(body.slice(k,k+CH));if(!body.length)break}
-  for(let k=1;k<parts.length;k++)await coll().doc(s.id+'~'+k).set({kind:'chunk',of:s.id,c:parts[k]});
-  await coll().doc(s.id).set({kind:'script',title:s.title||'',author:s.author||'',contact:s.contact||'',titlePage:!!s.titlePage,updated:s.updated,n:parts.length,c:parts[0]});
-  const prevN=s.remoteN||1;for(let k=parts.length;k<prevN;k++){try{await coll().doc(s.id+'~'+k).delete()}catch(e){}}
-  s.remoteN=parts.length;
+  const meta={name:safeName(s.title)+'.fountain',mimeType:'text/plain',appProperties:{gnId:s.id,gnUpdated:String(s.updated),gnTitle:(s.title||'').slice(0,40)}};
+  let id=fileIdOf(s);
+  if(id){
+    const mp=multipart(meta,encodeFile(s));
+    try{await gfetch(GUP+'/files/'+id+'?uploadType=multipart&fields=id',{method:'PATCH',headers:{'Content-Type':mp.type},body:mp.body});s.fileId=id;return}
+    catch(e){if(!(e&&e.code==='http'&&e.status===404))throw e}
+  }
+  meta.parents=[await folderId()];
+  const mp=multipart(meta,encodeFile(s));
+  let r;
+  try{r=await(await gfetch(GUP+'/files?uploadType=multipart&fields=id',{method:'POST',headers:{'Content-Type':mp.type},body:mp.body})).json()}
+  catch(e){if(e&&e.code==='http'&&e.status===404){LS.del('gn.folder');meta.parents=[await folderId()];const m2=multipart(meta,encodeFile(s));r=await(await gfetch(GUP+'/files?uploadType=multipart&fields=id',{method:'POST',headers:{'Content-Type':m2.type},body:m2.body})).json()}else throw e}
+  s.fileId=r.id;
+}
+async function remoteMeta(fileId){
+  const m=await(await gfetch(GAPI+'/files/'+fileId+'?fields=id,trashed,modifiedTime,appProperties')).json();
+  return{trashed:!!m.trashed,updated:+(m.appProperties&&m.appProperties.gnUpdated)||Date.parse(m.modifiedTime)||0};
 }
 async function fetchRemote(id){
-  const m=await coll().doc(id).get();if(!m.exists)return null;const d=m.data();
-  let body=d.c||'';for(let k=1;k<(d.n||1);k++){const c=await coll().doc(id+'~'+k).get();if(c.exists)body+=c.data().c||''}
-  return{id,title:d.title||'Sin título',author:d.author||'',contact:d.contact||'',titlePage:d.titlePage!==false,updated:d.updated||0,synced:d.updated||0,body,remoteN:d.n||1};
+  const r=remoteKnown[id];const fid=r&&r.fileId;if(!fid)return null;
+  const txt=await(await gfetch(GAPI+'/files/'+fid+'?alt=media')).text();
+  const d=decodeFile(txt);const up=d.external?(r.updated||Date.now()):(d.updated||r.updated||0);
+  return{id,fileId:fid,title:d.title||r.title||'Sin título',author:d.author||'',contact:d.contact||'',titlePage:d.titlePage!==false,updated:up,synced:up,body:d.body||''};
 }
 async function remoteList(){
-  const q=await coll().where('kind','==','script').get();
-  return q.docs.map(d=>{const x=d.data();return{id:d.id,title:x.title||'Sin título',updated:x.updated||0}});
+  const fid=await folderId();
+  const q=encodeURIComponent("'"+fid+"' in parents and trashed=false and mimeType!='application/vnd.google-apps.folder'");
+  const out=[];let pt='';
+  do{const r=await(await gfetch(GAPI+'/files?q='+q+'&fields=nextPageToken,files(id,name,modifiedTime,appProperties)&pageSize=200&spaces=drive'+(pt?'&pageToken='+encodeURIComponent(pt):''))).json();
+    for(const f of r.files||[]){const a=f.appProperties||{};out.push({id:a.gnId||('d_'+f.id),fileId:f.id,title:a.gnTitle||f.name.replace(/\.fountain$/i,''),updated:+a.gnUpdated||Date.parse(f.modifiedTime)||0})}
+    pt=r.nextPageToken}while(pt);
+  return out;
 }
+async function removeRemote(id){const fid=remoteKnown[id]&&remoteKnown[id].fileId;if(fid)await gfetch(GAPI+'/files/'+fid+'?fields=id',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({trashed:true})})}
+
 async function syncNow(manual){
   if(!db||!cur)return;if(pushing){pushAgain=true;return}
-  pushing=true;setCloud('busy','Subiendo…');
+  pushing=true;setCloud('busy','Subiendo a Drive…');
   const snap=Object.assign({},cur);let ok=false;
-  try{await pushRemote(snap);ok=true;
-    if(cur.id===snap.id){cur.remoteN=snap.remoteN;cur.synced=snap.updated;saveLocal(cur)}
-    else{const l=loadLocal(snap.id);if(l&&l.updated===snap.updated){l.synced=snap.updated;l.remoteN=snap.remoteN;saveLocal(l);LS.set('gn.last',cur.id)}}
-    remoteKnown[snap.id]={title:snap.title,updated:snap.updated};cloudConflict=false;
-    if(manual)toast('Subido a la nube.')}
-  catch(e){setCloud('err',e&&e.code==='quota_exceeded'?'Nube llena':'Sin conexión a la nube');if(manual)toast('No se pudo subir a la nube. Está guardado en este dispositivo.')}
-  pushing=false;if(ok)updCloud();if(pushAgain){pushAgain=false;syncNow(manual)}
+  try{
+    // ¿alguien ha subido otra versión desde otro dispositivo desde tu última sincronización?
+    const fid=fileIdOf(snap);
+    if(fid){const m=await remoteMeta(fid);
+      if(!m.trashed&&m.updated>(snap.synced||0)&&m.updated!==snap.updated&&forceFor!==snap.id+':'+m.updated){
+        pushing=false;forceFor=snap.id+':'+m.updated;cloudConflict=true;updCloud();
+        remoteKnown[snap.id]=Object.assign({},remoteKnown[snap.id]||{},{id:snap.id,fileId:fid,title:snap.title,updated:m.updated});
+        confirmDlg('En Drive hay una versión más nueva','Se subió desde otro dispositivo después de la última vez que sincronizaste aquí. Si la cargas, tu versión de este dispositivo se guarda como «'+(snap.title||'Sin título')+' (copia local)» en Mis guiones. Si cancelas y vuelves a pulsar Ctrl/⌘+S, subirás la tuya encima (Drive guarda el historial de versiones).','Cargar la de Drive',async()=>{
+          try{flushSave();const s=await fetchRemote(cur.id);if(!s){toast('No se pudo descargar.');return}const bk=backupCopy(cur);cloudConflict=false;openScript(s);toast('Cargada la de Drive. Tu versión está en «'+bk.title+'».')}
+          catch(e){toast('No se pudo descargar la versión de Drive.')}
+        });
+        return;
+      }
+    }
+    await pushRemote(snap);ok=true;
+    if(cur.id===snap.id){cur.fileId=snap.fileId;cur.synced=snap.updated;saveLocal(cur)}
+    else{const l=loadLocal(snap.id);if(l&&l.updated===snap.updated){l.synced=snap.updated;l.fileId=snap.fileId;saveLocal(l);LS.set('gn.last',cur.id)}}
+    remoteKnown[snap.id]={id:snap.id,fileId:snap.fileId,title:snap.title,updated:snap.updated};cloudConflict=false;
+    if(manual)toast('Subido a Google Drive.');
+  }catch(e){
+    if(e&&e.code==='auth'){if(manual)toast('La sesión de Google ha caducado. Vuelve a pulsar Ctrl/⌘+S o toca el indicador para reconectar.')}
+    else{setCloud('err',navigator.onLine?'Error al subir a Drive':'Sin conexión');if(manual)toast(navigator.onLine?'No se pudo subir a Drive. Está guardado en este dispositivo.':'Sin conexión: está guardado en este dispositivo. Súbelo cuando vuelvas a tener internet.')}
+  }
+  pushing=false;if(ok)updCloud();else if(!tokenOk())updCloud();if(pushAgain){pushAgain=false;syncNow(manual)}
+}
+function uploadNow(){
+  if(!cur)return;
+  if(tokenOk()){if(!db)db={};syncNow(true);return}
+  const first=!driveOn();
+  authorize().then(async()=>{
+    db={};LS.set('gn.drive','1');
+    if(first){try{const a=await(await gfetch(GAPI+'/about?fields=user(emailAddress)')).json();if(a.user&&a.user.emailAddress)LS.set('gn.email',a.user.emailAddress)}catch(e){}}
+    await refreshRemote(true);
+    if(first){
+      const newest=Object.values(remoteKnown).sort((a,b)=>b.updated-a.updated)[0];
+      const isBlank=cur&&(cur.sample||!cur.body.replace(/^s\|$/,'').trim());
+      if(newest&&isBlank){const s=await fetchRemote(newest.id).catch(()=>null);if(s){const old=cur.id;openScript(s);dropLocal(old);toast('Conectado a Drive. Abierto «'+s.title+'».');return}}
+      toast(cur&&cur.sample?'Conectado a Google Drive.':'Conectado a Google Drive. Pulsa Ctrl/⌘+S para subir este guion.');updCloud();
+    }else syncNow(true);
+  }).catch(authError);
+}
+function disconnectDrive(){
+  try{if(tok&&window.google&&google.accounts&&google.accounts.oauth2)google.accounts.oauth2.revoke(tok.t,()=>{})}catch(e){}
+  tok=null;db=null;remoteKnown={};['gn.tok','gn.drive','gn.folder','gn.email'].forEach(k=>LS.del(k));updCloud();toast('Google Drive desconectado. Tus guiones siguen en este dispositivo y en Drive.');
 }
 let remoteKnown={},askedFor=null;
 async function refreshRemote(adoptCurrent){
-  if(!db)return;
+  if(!db||!tokenOk()){updCloud();return}
   try{
     const list=await remoteList();remoteKnown={};list.forEach(r=>remoteKnown[r.id]=r);
+    if(cur&&!cur.fileId&&remoteKnown[cur.id])cur.fileId=remoteKnown[cur.id].fileId;
     if(cur&&adoptCurrent){
       const r=remoteKnown[cur.id];
       if(r&&r.updated>cur.updated&&r.updated!==cur.synced){
         if(!dirty&&!unsent(cur)){
-          // aquí no hay nada sin subir: cargar la de la nube no pierde nada
-          const s=await fetchRemote(cur.id);if(s&&!dirty&&!unsent(cur)){const pos=lastCaret;openScript(s);setCaret(pos.i,pos.off);toast('Cargada la versión más reciente de la nube.')}
+          const s=await fetchRemote(cur.id);if(s&&!dirty&&!unsent(cur)){const pos=lastCaret;openScript(s);setCaret(pos.i,pos.off);toast('Cargada la versión más reciente de Drive.')}
         }else if(askedFor!==cur.id+':'+r.updated){
-          askedFor=cur.id+':'+r.updated;cloudConflict=true;
-          flushSave();
-          confirmDlg('Hay una versión más reciente en la nube','Se subió desde otro dispositivo después de tu último cambio aquí, y en este dispositivo tienes cambios sin subir. Si cargas la de la nube, tus cambios de aquí se guardan como «'+(cur.title||'Sin título')+' (copia local)» en Mis guiones. Si cancelas, sigues con la tuya (y al pulsar Ctrl/⌘+S la subirás encima).','Cargar la de la nube',async()=>{
+          askedFor=cur.id+':'+r.updated;cloudConflict=true;flushSave();
+          confirmDlg('En Drive hay una versión más nueva','Se subió desde otro dispositivo después de tu último cambio aquí, y en este dispositivo tienes cambios sin subir. Si cargas la de Drive, tus cambios de aquí se guardan como «'+(cur.title||'Sin título')+' (copia local)» en Mis guiones. Si cancelas, sigues con la tuya (y al pulsar Ctrl/⌘+S podrás subirla encima).','Cargar la de Drive',async()=>{
             try{flushSave();const s=await fetchRemote(cur.id);if(!s){toast('No se pudo descargar.');return}
-              const bk=backupCopy(cur);cloudConflict=false;openScript(s);toast('Cargada la de la nube. Tu versión está en «'+bk.title+'».')}
-            catch(e){toast('No se pudo descargar la versión de la nube.')}
+              const bk=backupCopy(cur);cloudConflict=false;openScript(s);toast('Cargada la de Drive. Tu versión está en «'+bk.title+'».')}
+            catch(e){toast('No se pudo descargar la versión de Drive.')}
           });
         }
       }
     }
     updCloud();
-  }catch(e){setCloud('err','Sin conexión a la nube')}
+  }catch(e){if(e&&e.code==='auth')updCloud();else setCloud('err',navigator.onLine?'Error con Drive':'Sin conexión')}
 }
 async function initCloud(){
-  if(!hasRuntime){setCloud('','Este dispositivo');return}
-  try{
-    const [d,u,dl]=await Promise.all([claude.use('db').catch(()=>null),claude.use('user').catch(()=>null),claude.use('downloads').catch(()=>null)]);
-    downloads=dl||null;
-    if(d&&u){uid=await u.id();if(uid)db=d}
-  }catch(e){}
-  if(!db){setCloud('','Este dispositivo');return}
-  setCloud('busy','Conectando…');
-  // si el último guion abierto en otro dispositivo es más reciente, ofrecerlo
+  if(navigator.onLine)loadGIS().catch(()=>{});
+  if(!driveOn()){updCloud();return}
+  db={};
+  if(!tokenOk()){updCloud();return}
+  setCloud('busy','Conectando con Drive…');
   await refreshRemote(true);
-  if(cur&&!loadLocal(cur.id)){}
-  const newest=Object.values(remoteKnown).sort((a,b)=>b.updated-a.updated)[0];
-  const isBlank=cur&&(cur.sample||!cur.body.replace(/^s\|$/,'').trim())&&Object.keys(index()).length<=1;
-  if(newest&&isBlank&&newest.id!==cur.id){const s=await fetchRemote(newest.id);if(s){const old=cur.id;openScript(s);dropLocal(old)}}
 }
+addEventListener('online',()=>{loadGIS().catch(()=>{});if(db)refreshRemote(true)});
+addEventListener('offline',()=>{if(driveOn())setCloud('pend','Sin conexión · guardado aquí')});
 function dropLocal(id){LS.del('gn.s.'+id);const ix=index();delete ix[id];setIndex(ix)}
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushSave();else if(db)refreshRemote(true)});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')flushSave();else if(db&&tokenOk())refreshRemote(true);else updCloud()});
 addEventListener('pagehide',()=>flushSave());
 
 /* ---------------- lista de guiones ---------------- */
@@ -1253,24 +1373,24 @@ function renderScripts(){
     const r=document.createElement('div');r.className='srow'+(cur&&s.id===cur.id?' cur':'');
     r.innerHTML='<div class="meta"><b></b><span></span></div><button class="btn" data-o>Abrir</button><button class="btn danger" data-d title="Eliminar">Eliminar</button>';
     r.querySelector('b').textContent=s.title||'Sin título';
-    r.querySelector('span').textContent=fmtDate(s.updated)+(s.cloud?' · en la nube':' · solo este dispositivo');
+    r.querySelector('span').textContent=fmtDate(s.updated)+(s.cloud?' · en Drive':' · solo este dispositivo');
     r.querySelector('[data-o]').onclick=async()=>{
       flushSave();
       let loc=loadLocal(s.id);
       if(db&&remoteKnown[s.id]&&(!loc||remoteKnown[s.id].updated>loc.updated)){try{const rs=await fetchRemote(s.id);if(rs){if(loc&&unsent(loc)){const bk=backupCopy(loc);toast('Tus cambios sin subir se guardaron en «'+bk.title+'».')}loc=rs}}catch(e){}}
       if(loc){openScript(loc);closeModal('mdScripts')}else toast('No se pudo abrir el guion.');
     };
-    r.querySelector('[data-d]').onclick=()=>confirmDlg('Eliminar guion','Se eliminará «'+(s.title||'Sin título')+'» de este dispositivo y de la nube. No se puede deshacer.','Eliminar',async()=>{
+    r.querySelector('[data-d]').onclick=()=>confirmDlg('Eliminar guion','Se eliminará «'+(s.title||'Sin título')+'» de este dispositivo'+(s.cloud?' y se moverá a la papelera de tu Drive (desde ahí lo puedes recuperar durante 30 días).':'. No se puede deshacer.'),'Eliminar',async()=>{
       dropLocal(s.id);
-      if(db){try{const m=await coll().doc(s.id).get();const n=m.exists?(m.data().n||1):1;for(let k=1;k<n;k++)await coll().doc(s.id+'~'+k).delete();await coll().doc(s.id).delete()}catch(e){}delete remoteKnown[s.id]}
+      if(db&&remoteKnown[s.id]){try{await removeRemote(s.id)}catch(e){toast('No se pudo mover a la papelera de Drive.')}delete remoteKnown[s.id]}
       if(cur&&cur.id===s.id){const rest=allScripts();if(rest.length){const nx=loadLocal(rest[0].id)||(db&&await fetchRemote(rest[0].id).catch(()=>null));if(nx){cur=null;openScript(nx)}else{cur=null;newScript()}}else{cur=null;newScript()}}
       renderScripts();openModal('mdScripts');
     });
     box.appendChild(r);
   }
-  $('#syncNote').textContent='Los guiones se guardan en este dispositivo. Exporta en Fountain de vez en cuando como copia de seguridad.';
+  $('#syncNote').textContent=driveOn()?'Mientras escribes se guarda en este dispositivo. Ctrl/⌘+S (o tocar el indicador de Drive) lo sube a la carpeta «Guionista» de tu Google Drive como archivo .fountain.':'Los guiones se guardan en este dispositivo. Conecta Google Drive (indicador de arriba) para tenerlos en el PC y el iPad.';
 }
-$('#bScripts').onclick=async()=>{flushSave();renderScripts();openModal('mdScripts');if(db){await refreshRemote(false);renderScripts()}};
+$('#bScripts').onclick=async()=>{flushSave();renderScripts();openModal('mdScripts');if(db&&tokenOk()){await refreshRemote(false);renderScripts()}};
 $('#bNew').onclick=()=>{newScript();closeModal('mdScripts')};
 
 /* ---------------- importar ---------------- */
@@ -1280,6 +1400,7 @@ async function importFile(f){
   try{
     const txt=await f.text();
     if(/\u0000/.test(txt.slice(0,4000))||/^%PDF|^PK/.test(txt.slice(0,5))){toast('Ese archivo no es Fountain, FDX ni texto. Si es un PDF o un documento de Pages/Word, expórtalo antes como Fountain o FDX.');return}
+    if(txt.includes('GUIONISTA-DATA')){const d=decodeFile(txt);if(!d.external){openScript({id:newId(),title:d.title||'Importado',author:d.author||'',contact:d.contact||'',titlePage:d.titlePage!==false,body:d.body});closeModal('mdScripts');dirty=true;flushSave();toast('Importado «'+(d.title||'Importado')+'».');return}}
     const r=/\.fdx$/i.test(f.name)||/<FinalDraft/i.test(txt.slice(0,500))?parseFDX(txt):parseFountain(txt);
     if(!r.blocks.length){toast('No se encontró texto de guion en el archivo.');return}
     const title=(r.meta.title||f.name.replace(/\.(fountain|txt|fdx|spmd|md)$/gi,'').replace(/\.fountain$/i,'')).replace(/[_*]/g,'').trim();
@@ -1319,7 +1440,7 @@ function openMenu(id,btn){
 }
 function closeMenus(){document.querySelectorAll('.menu').forEach(m=>m.style.display='none')}
 $('#bExport').onclick=e=>{e.stopPropagation();openMenu('#mExport',e.currentTarget)};
-$('#bMore').onclick=e=>{e.stopPropagation();openMenu('#mMore',e.currentTarget)};
+$('#bMore').onclick=e=>{e.stopPropagation();$('#mDrive').textContent=driveOn()?'Google Drive: conectado':'Conectar Google Drive';openMenu('#mMore',e.currentTarget)};
 document.addEventListener('click',e=>{if(!e.target.closest('.menu'))closeMenus()});
 document.addEventListener('click',e=>{
   const a=e.target.closest('[data-act]');if(!a)return;closeMenus();
@@ -1331,6 +1452,7 @@ document.addEventListener('click',e=>{
     case'settings':$('#sPaper').value=settings.paper;$('#sBold').checked=settings.bold;$('#sNums').checked=settings.nums;$('#sDark').checked=settings.dark;$('#sPages').checked=settings.pages!==false;openModal('mdSettings');break;
     case'import':fileIn.click();break;
     case'help':openModal('mdHelp');break;
+    case'drive':if(driveOn())confirmDlg('Google Drive','Conectado'+(LS.get('gn.email')?' como '+LS.get('gn.email'):'')+'. Los guiones se suben a la carpeta «Guionista» de tu Drive con Ctrl/⌘+S. Si desconectas, la app deja de subirlos; no se borra nada.','Desconectar',disconnectDrive);else uploadNow();break;
   }
 });
 $('#bSaveTitle').onclick=()=>{cur.title=$('#fTitle').value.trim()||'Sin título';cur.author=$('#fAuthor').value.trim();cur.contact=$('#fContact').value.replace(/\s+$/,'');cur.titlePage=$('#fTitlePage').checked;$('#docTitle').value=cur.title;dirty=true;flushSave();closeModal('mdTitle')};
@@ -1393,7 +1515,7 @@ if('serviceWorker' in navigator&&location.protocol!=='file:'){
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloading||!hadCtl)return;reloading=true;toast('Hay una versión nueva de Guionista: se usará la próxima vez que la abras.')});
   addEventListener('load',()=>navigator.serviceWorker.register('sw.js').then(r=>{setInterval(()=>r.update().catch(()=>{}),30*60*1000)}).catch(()=>{}));
 }
-window.__gn={getNotes,setNotes,layout,parseFountain,toFountain,makePDF:()=>makePDF(cur),serialize,getCaret};
+window.__gn={getNotes,setNotes,layout,parseFountain,toFountain,encodeFile,decodeFile,makePDF:()=>makePDF(cur),serialize,getCaret};
 })();
 </script>
 </body>
