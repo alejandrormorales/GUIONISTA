@@ -140,30 +140,31 @@ body[data-view=cards] .scroll,body[data-view=bd] .scroll,body[data-view=cards] .
 .vbar select{width:auto;padding:6px 8px;font-size:13px}
 .vbar .info{font-size:12.5px;color:var(--muted);margin-left:auto}
 .lane{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:6px 2px 8px;display:flex;align-items:center;gap:8px}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-bottom:22px}
-.card2{position:relative;background:var(--paper);color:var(--paper-ink);border:1px solid var(--line);border-top:5px solid var(--cc,var(--line));border-radius:10px;padding:9px 10px 8px;display:flex;flex-direction:column;gap:5px;min-height:150px;transition:opacity .15s}
+#board{--cz:1}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(calc(230px*var(--cz)),1fr));gap:calc(12px*var(--cz));margin-bottom:22px}
+.card2{position:relative;background:var(--paper);color:var(--paper-ink);border:1px solid var(--line);border-top:5px solid var(--cc,var(--line));border-radius:10px;padding:.7em .77em .6em;display:flex;flex-direction:column;gap:.4em;min-height:11.5em;transition:opacity .15s;font-size:calc(13px*var(--cz))}
 .card2.blk{background:var(--accent-soft)}
-.card2.idea{border-style:dashed;border-top-style:solid;min-height:110px}
+.card2.idea{border-style:dashed;border-top-style:solid;min-height:8.5em}
 .card2.dim{opacity:.28}
 .card2.dragging{opacity:.4}
 .card2.dropL::before,.card2.dropR::after{content:'';position:absolute;top:0;bottom:0;width:4px;border-radius:2px;background:var(--accent)}
 .card2.dropL::before{left:-8px}.card2.dropR::after{right:-8px}
 .card2 .ch{display:flex;gap:6px;align-items:flex-start}
 .card2 .num{padding-top:3px}
-.card2 .num{font:600 12px Inter,sans-serif;color:var(--muted);min-width:18px;cursor:grab}
-.card2 .hd{flex:1;min-width:0;border:0;padding:2px 4px;resize:none;overflow:hidden;line-height:1.3;min-height:0;background:transparent;font:700 12.5px 'Courier Prime',Courier,monospace;text-transform:uppercase;color:inherit;border-radius:5px}
+.card2 .num{font:600 .92em Inter,sans-serif;color:var(--muted);min-width:18px;cursor:grab}
+.card2 .hd{flex:1;min-width:0;border:0;padding:2px 4px;resize:none;overflow:hidden;line-height:1.3;min-height:0;background:transparent;font:700 .96em 'Courier Prime',Courier,monospace;text-transform:uppercase;color:inherit;border-radius:5px}
 .card2 .hd:focus,.card2 .sy:focus{outline:2px solid var(--accent-soft);background:var(--ui)}
-.card2 .sy{flex:1;border:0;padding:3px 4px;background:transparent;font:13px/1.4 Inter,sans-serif;resize:none;min-height:64px;color:inherit;border-radius:5px}
-.card2 .ft{display:flex;gap:6px;align-items:center;font-size:11px;color:var(--muted);flex-wrap:wrap}
+.card2 .sy{flex:1 0 auto;border:0;padding:3px 4px;background:transparent;font:1em/1.4 Inter,sans-serif;resize:none;min-height:5em;color:inherit;border-radius:5px}
+.card2 .ft{display:flex;gap:6px;align-items:center;font-size:.85em;color:var(--muted);flex-wrap:wrap}
 .card2 .ft .who{flex:1 1 100%;font-family:'Courier Prime',Courier,monospace;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .card2 .dots{display:flex;gap:3px}
-.card2 .dots i{width:11px;height:11px;border-radius:50%;cursor:pointer;border:1px solid rgba(0,0,0,.15);display:inline-block}
+.card2 .dots i{width:.85em;height:.85em;border-radius:50%;cursor:pointer;border:1px solid rgba(0,0,0,.15);display:inline-block}
 .card2 .dots i.sel{outline:2px solid var(--ink);outline-offset:1px}
 .card2 .acts{margin-left:auto;display:flex;gap:2px}
 @media (hover:hover){.card2:not(:hover):not(:focus-within) .dots i:not(.sel),.card2:not(:hover):not(:focus-within) .acts{visibility:hidden}}
-.card2 .acts button{padding:2px 6px;border-radius:6px;font-size:12px;color:var(--muted)}
+.card2 .acts button{padding:2px 6px;border-radius:6px;font-size:1.05em;color:var(--muted)}
 .card2 .acts button:hover{background:var(--line);color:var(--ink)}
-.addcard{border:1.5px dashed var(--line);border-radius:10px;min-height:110px;color:var(--muted);font-size:13px;display:flex;align-items:center;justify-content:center}
+.addcard{border:1.5px dashed var(--line);border-radius:10px;min-height:calc(110px*var(--cz));color:var(--muted);font-size:calc(13px*var(--cz));display:flex;align-items:center;justify-content:center}
 .addcard:hover{border-color:var(--accent);color:var(--accent)}
 .btab{display:flex;gap:4px;margin-bottom:10px}
 .btab button{padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:var(--paper);font-size:13px}
@@ -178,6 +179,35 @@ body[data-view=cards] .scroll,body[data-view=bd] .scroll,body[data-view=cards] .
 .tbl tr.go{cursor:pointer}.tbl tr.go:hover td{background:var(--accent-soft)}
 .tblw{overflow:auto;border-radius:10px}
 @media (max-width:700px){.seg button{padding:5px 7px;font-size:12px}}
+/* zoom de tarjetas y ficha grande */
+.zoom{display:flex;background:var(--bg);border-radius:9px;padding:2px;gap:2px}
+.zoom button{padding:5px 10px;border-radius:7px;font-size:12.5px;color:var(--muted);font-weight:600}
+.zoom button.on{background:var(--paper);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.1)}
+#mdCard .card{max-width:820px;padding:0;overflow:hidden;border-top:8px solid var(--cc,var(--line))}
+.fc-top{display:flex;align-items:center;gap:10px;padding:14px 18px 6px}
+.fc-top .num{font:600 15px Inter,sans-serif;color:var(--muted);min-width:24px}
+.fc-top .pos{margin-left:auto;font-size:12.5px;color:var(--muted);white-space:nowrap}
+.fc-hd{width:100%;border:0;background:transparent;font:700 22px/1.3 'Courier Prime',Courier,monospace;text-transform:uppercase;color:var(--ink);padding:4px 18px;resize:none;overflow:hidden}
+.fc-sy{width:100%;border:0;background:transparent;font:18px/1.55 Inter,sans-serif;color:var(--ink);padding:8px 18px;resize:none;min-height:150px;overflow:hidden}
+.fc-hd:focus,.fc-sy:focus{outline:none;background:var(--paper)}
+.fc-meta{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;padding:8px 18px;font-size:13px;color:var(--muted);border-top:1px solid var(--line)}
+.fc-meta b{color:var(--ink);font-weight:500}
+.fc-meta .who{font-family:'Courier Prime',Courier,monospace;text-transform:uppercase;color:var(--ink)}
+.fc-meta .dots{display:flex;gap:5px}.fc-meta .dots i{width:16px;height:16px;border-radius:50%;cursor:pointer;border:1px solid rgba(0,0,0,.15);display:inline-block}
+.fc-meta .dots i.sel{outline:2px solid var(--ink);outline-offset:1px}
+.fc-prev{margin:0 18px;max-height:34vh;overflow:auto;background:var(--paper);color:var(--paper-ink);border:1px solid var(--line);border-radius:8px;padding:12px 16px;font:13px/1.3 'Courier Prime',Courier,monospace}
+.fc-prev .l{white-space:pre-wrap;margin:0 0 .9em}
+.fc-prev .l[data-t=c]{margin-left:22ch;margin-bottom:0;text-transform:uppercase}
+.fc-prev .l[data-t=p]{margin-left:16ch;margin-bottom:0}
+.fc-prev .l[data-t=d]{margin-left:10ch;max-width:35ch}
+.fc-prev .l[data-t=t]{text-align:right;text-transform:uppercase}
+.fc-prev .l[data-t=h],.fc-prev .l[data-t=s]{text-transform:uppercase}
+.fc-prev .more{color:var(--muted);font-family:Inter,sans-serif;font-size:12px}
+.fc-lbl{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:12px 18px 6px}
+.fc-bar{display:flex;gap:8px;align-items:center;padding:14px 18px;border-top:1px solid var(--line);margin-top:14px;flex-wrap:wrap}
+.fc-bar .sp{flex:1}
+.fc-bar .hint{font-size:12px;color:var(--muted)}
+@media (hover:none){.fc-bar .hint{display:none}}
 /* notas */
 .paper{position:relative}
 #ed .b.hn{background:rgba(255,190,0,.22);box-shadow:0 0 0 .2em rgba(255,190,0,.22);border-radius:2px}
@@ -404,6 +434,8 @@ body.focus .scroll{padding-top:10px}
   <div class="row"><button class="btn" data-close>Cerrar</button></div>
 </div></div>
 
+<div class="modal" id="mdCard"><div class="card"></div></div>
+
 <div class="modal" id="mdConfirm"><div class="card">
   <h2 id="cfTitle">¿Seguro?</h2><p id="cfText" class="note" style="font-size:14px"></p>
   <div class="row"><button class="btn" data-close>Cancelar</button><button class="btn primary" id="cfOk">Aceptar</button></div>
@@ -426,7 +458,7 @@ const TYPES={
   h:{n:'Plano',ph:'PRIMER PLANO'},
   m:{n:'Bloque',ph:'SECUENCIA DE MONTAJE'}
 };
-const APP_VERSION='1.5.1';
+const APP_VERSION='1.6';
 const ORDER=['s','a','c','p','d','t','h','m'];
 const ENTER={s:'a',a:'a',c:'d',p:'d',d:'a',t:'s',h:'a',m:'a'};
 const TAB={a:'c',c:'t',d:'p',p:'d',s:'a',t:'s',h:'a',m:'s'};
@@ -1913,13 +1945,20 @@ function moveUnit(from,to){
   normalize();commit();changed(false);stats();renderBoard();
 }
 let boardFilter={ch:'',lc:''};
+const CZ=[[0.85,'S'],[1,'M'],[1.35,'L'],[1.8,'XL']];
+function cardZoom(){const v=parseFloat(LS.get('gn.cz'));return CZ.some(z=>z[0]===v)?v:1}
+function applyCardZoom(){$('#board').style.setProperty('--cz',cardZoom());document.querySelectorAll('#czBar button').forEach(b=>b.classList.toggle('on',+b.dataset.z===cardZoom()))}
+function regrowCards(){document.querySelectorAll('#board .card2 .sy,#board .card2 .hd').forEach(t=>{t.style.height='auto';t.style.height=t.scrollHeight+'px'})}
+function setCardZoom(v){LS.set('gn.cz',String(v));applyCardZoom();requestAnimationFrame(()=>requestAnimationFrame(regrowCards))}
+$('#board').addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();const i=CZ.findIndex(z=>z[0]===cardZoom());const j=Math.max(0,Math.min(CZ.length-1,i+(e.deltaY<0?1:-1)));if(j!==i)setCardZoom(CZ[j][0])},{passive:false});
 function renderBoard(){
-  stats();
+  stats();applyCardZoom();
   const box=$('#board'),us=units(),st=sceneStats();box.innerHTML='';
   const bar=document.createElement('div');bar.className='vbar';
   const chs=[...charCounts().entries()].sort((a,b)=>b[1].n-a[1].n).map(e=>e[0]);
   const lcs=[...new Set([...st.locs.keys()].map(l=>l.split('.')[0]))].sort();
-  bar.innerHTML='<button class="btn primary" id="bAddScene">＋ Escena</button><select id="fCh"><option value="">Resaltar personaje…</option></select><select id="fLc"><option value="">Resaltar lugar…</option></select><span class="info"></span>';
+  bar.innerHTML='<button class="btn primary" id="bAddScene">＋ Escena</button><select id="fCh"><option value="">Resaltar personaje…</option></select><select id="fLc"><option value="">Resaltar lugar…</option></select><div class="zoom" id="czBar" title="Tamaño de las tarjetas (también Ctrl + rueda del ratón)"></div><span class="info"></span>';
+  CZ.forEach(([v,n])=>{const b=document.createElement('button');b.textContent=n;b.dataset.z=v;if(v===cardZoom())b.className='on';b.onclick=()=>setCardZoom(v);bar.querySelector('#czBar').appendChild(b)});
   chs.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;bar.querySelector('#fCh').appendChild(o)});
   lcs.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c.replace(/\u2024/g,'. ');bar.querySelector('#fLc').appendChild(o)});
   bar.querySelector('#fCh').value=boardFilter.ch;bar.querySelector('#fLc').value=boardFilter.lc;
@@ -1942,12 +1981,12 @@ function renderBoard(){
 }
 function ideasChanged(){markDirty()}
 function colorDots(cur0,onPick){const d=document.createElement('span');d.className='dots';COLORS.forEach(([c,n])=>{const i=document.createElement('i');i.title=n;i.style.background=c||'var(--paper)';if(c===cur0)i.className='sel';i.onclick=()=>onPick(c);d.appendChild(i)});return d}
-function autoGrow(t){t.style.height='auto';t.style.height=Math.max(64,t.scrollHeight)+'px'}
+function autoGrow(t){t.style.height='auto';t.style.height=t.scrollHeight+'px'}
 function sceneCard(u,k,us){
   const el=document.createElement('div');el.className='card2'+(u.t==='m'?' blk':'');el.draggable=true;el.dataset.k=k;if(u.c)el.style.setProperty('--cc',u.c);
   const lc=u.h?u.h.main:'';
   if((boardFilter.ch&&!u.chars.has(boardFilter.ch))||(boardFilter.lc&&lc!==boardFilter.lc))el.classList.add('dim');
-  el.innerHTML='<div class="ch"><span class="num" title="Arrastrar"></span><textarea class="hd" rows="1" spellcheck="false"></textarea></div><textarea class="sy" rows="3" placeholder="Sinopsis: qué pasa en esta escena…"></textarea><div class="ft"><span class="who"></span><span class="len"></span><span class="acts"><button data-a="l" title="Mover antes">◀</button><button data-a="r" title="Mover después">▶</button><button data-a="add" title="Nueva escena después">＋</button><button data-a="go" title="Ir al guion">↗</button><button data-a="del" title="Eliminar escena">🗑</button></span></div>';
+  el.innerHTML='<div class="ch"><span class="num" title="Arrastrar"></span><textarea class="hd" rows="1" spellcheck="false"></textarea></div><textarea class="sy" rows="3" placeholder="Sinopsis: qué pasa en esta escena…"></textarea><div class="ft"><span class="who"></span><span class="len"></span><span class="acts"><button data-a="l" title="Mover antes">◀</button><button data-a="r" title="Mover después">▶</button><button data-a="add" title="Nueva escena después">＋</button><button data-a="big" title="Ver en grande (o doble clic en la tarjeta)">⤢</button><button data-a="go" title="Ir al guion">↗</button><button data-a="del" title="Eliminar escena">🗑</button></span></div>';
   el.querySelector('.num').textContent=u.t==='m'?'▤':u.num;
   const hd=el.querySelector('.hd');hd.value=u.x;hd.placeholder=u.t==='m'?'SECUENCIA DE MONTAJE':(headingStyle()==='us'?'INT. LUGAR - DÍA':'INT.DÍA.LUGAR');
   const gh=()=>{hd.style.height='auto';hd.style.height=hd.scrollHeight+'px'};setTimeout(gh,0);
@@ -1960,10 +1999,12 @@ function sceneCard(u,k,us){
   el.querySelector('.len').textContent=u.eighths?('p. '+u.page+' · '+fmt8(u.eighths)+' pág.'):'';
   el.querySelector('.ft').insertBefore(colorDots(u.c,c=>{commit();if(c)u.b.dataset.c=c;else delete u.b.dataset.c;commit();changed(false);renderBoard()}),el.querySelector('.acts'));
   el.querySelector('.acts').onclick=e=>{const a=e.target.closest('button');if(!a)return;const x=a.dataset.a;
+    if(x==='big'){openCardView(k);return}
     if(x==='l')moveUnit(k,k-1);else if(x==='r')moveUnit(k,k+2);else if(x==='go')goToBlock(u.i);else if(x==='add')addSceneAfter(u.end,'');
     else if(x==='del')confirmDlg('Eliminar escena','Se borrará «'+(u.x||'escena sin título')+'» con todo su texto. Puedes recuperarla con Ctrl/⌘+Z.','Eliminar',()=>{commit();[...ed.children].slice(u.i,u.end).forEach(n=>n.remove());if(!ed.children.length)ed.appendChild(mk('s'));normalize();commit();changed(false);renderBoard()})};
   // arrastrar
   el.addEventListener('pointerdown',e=>{el.draggable=!e.target.closest('input,textarea,button,.dots')});
+  el.addEventListener('dblclick',e=>{if(e.target.closest('textarea,input,button,.dots'))return;openCardView(k)});
   el.addEventListener('dragstart',e=>{if(e.target.closest('input,textarea')){e.preventDefault();return}e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/x-card',String(k));el.classList.add('dragging')});
   el.addEventListener('dragend',()=>{el.classList.remove('dragging');document.querySelectorAll('.dropL,.dropR').forEach(x=>x.classList.remove('dropL','dropR'))});
   el.addEventListener('dragover',e=>{if(!e.dataTransfer.types.includes('text/x-card'))return;e.preventDefault();const r=el.getBoundingClientRect();const before=e.clientX<r.left+r.width/2;document.querySelectorAll('.dropL,.dropR').forEach(x=>x!==el&&x.classList.remove('dropL','dropR'));el.classList.toggle('dropL',before);el.classList.toggle('dropR',!before)});
@@ -1982,6 +2023,48 @@ function ideaCard(idea,k){
     else{const txt=(idea.x||'').trim();cur.ideas.splice(k,1);ideasChanged();addSceneAfter(ed.children.length,txt,idea.c)}};
   return el;
 }
+/* ficha grande: ver y editar una tarjeta en grande, y pasar a la anterior / siguiente */
+let fcK=-1,fcU=null;
+function openCardView(k){
+  const us=units();if(k<0||k>=us.length)return;fcK=k;const u=fcU=us[k];
+  const box=$('#mdCard .card');box.style.setProperty('--cc',u.c||'var(--line)');
+  const nsc=us.filter(x=>x.t==='s').length;
+  box.innerHTML='<div class="fc-top"><span class="num"></span><span class="pos"></span></div><textarea class="fc-hd" rows="1" spellcheck="false"></textarea><textarea class="fc-sy" placeholder="Sinopsis: qué pasa en esta escena…"></textarea><div class="fc-meta"></div><div class="fc-lbl">Así empieza en el guion</div><div class="fc-prev"></div><div class="fc-bar"><button class="btn" data-a="prev">← Anterior</button><button class="btn" data-a="next">Siguiente →</button><span class="hint">Alt/⌥ + ← → para pasar de tarjeta · Esc para cerrar</span><span class="sp"></span><button class="btn" data-a="go">Ir al guion</button><button class="btn primary" data-a="close">Cerrar</button></div>';
+  box.querySelector('.num').textContent=u.t==='m'?'Bloque':'Escena '+u.num;
+  box.querySelector('.pos').textContent=(k+1)+' de '+us.length+(u.eighths?' · p. '+u.page+' · '+fmt8(u.eighths)+' pág.':'');
+  const hd=box.querySelector('.fc-hd'),sy=box.querySelector('.fc-sy');
+  const grow=t=>{t.style.height='auto';t.style.height=t.scrollHeight+'px'};
+  hd.value=u.x;hd.placeholder=u.t==='m'?'SECUENCIA DE MONTAJE':(headingStyle()==='us'?'INT. LUGAR - DÍA':'INT.DÍA.LUGAR');
+  hd.oninput=()=>{hd.value=hd.value.replace(/\n/g,' ');setText(u.b,up(hd.value));grow(hd);changed(true)};
+  hd.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();sy.focus()}};
+  sy.value=u.sy;sy.oninput=()=>{if(sy.value.trim())u.b.dataset.sy=sy.value.replace(/\n+/g,' ');else delete u.b.dataset.sy;grow(sy);changed(true)};
+  const meta=box.querySelector('.fc-meta');
+  meta.innerHTML='<span>Personajes: <span class="who"></span></span><span class="sp" style="flex:1"></span>';
+  meta.querySelector('.who').textContent=u.chars.size?[...u.chars.entries()].map(([n,c])=>n+(c>1?' ('+c+')':'')).join(', '):(u.t==='m'?'—':'sin diálogos');
+  const dots=document.createElement('span');dots.className='dots';
+  COLORS.forEach(([c,n])=>{const i=document.createElement('i');i.title=n;i.style.background=c||'var(--paper)';if(c===(u.b.dataset.c||''))i.className='sel';
+    i.onclick=()=>{commit();if(c)u.b.dataset.c=c;else delete u.b.dataset.c;commit();changed(false);box.style.setProperty('--cc',c||'var(--line)');dots.querySelectorAll('i').forEach(x=>x.classList.toggle('sel',x===i))};dots.appendChild(i)});
+  meta.appendChild(dots);
+  // arranque de la escena en el guion
+  const pv=box.querySelector('.fc-prev');const kids=[...ed.children].slice(u.i+1,u.end);let shown=0,chars=0;
+  for(const b of kids){const x=textOf(b).trim();if(!x)continue;if(shown>=14||chars>1400)break;const d=document.createElement('div');d.className='l';d.dataset.t=b.dataset.t;d.textContent=x;pv.appendChild(d);shown++;chars+=x.length}
+  if(!shown)pv.innerHTML='<div class="more">Esta escena todavía no tiene texto en el guion.</div>';
+  else if(kids.filter(b=>textOf(b).trim()).length>shown){const m=document.createElement('div');m.className='more';m.textContent='… sigue en el guion';pv.appendChild(m)}
+  box.querySelector('[data-a=prev]').disabled=k===0;box.querySelector('[data-a=next]').disabled=k===us.length-1;
+  box.querySelector('.fc-bar').onclick=e=>{const a=e.target.closest('button');if(!a)return;const x=a.dataset.a;
+    if(x==='prev')openCardView(fcK-1);else if(x==='next')openCardView(fcK+1);else if(x==='close')closeCardView();else if(x==='go'){const i=u.i;closeCardView(true);goToBlock(i)}};
+  if(!$('#mdCard').classList.contains('open'))openModal('mdCard');
+  setTimeout(()=>{grow(hd);grow(sy)},0);
+}
+function closeCardView(noRender){closeModal('mdCard');fcK=-1;fcU=null;commit();if(!noRender&&view==='cards')renderBoard()}
+document.addEventListener('keydown',e=>{
+  if(!$('#mdCard').classList.contains('open'))return;
+  if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeCardView();return}
+  const inText=e.target.closest&&e.target.closest('textarea,input');
+  if((e.key==='ArrowRight'||e.key==='ArrowLeft')&&(e.altKey||!inText)){e.preventDefault();e.stopPropagation();openCardView(fcK+(e.key==='ArrowRight'?1:-1))}
+},true);
+$('#mdCard').addEventListener('click',e=>{if(e.target.id==='mdCard')closeCardView()});
+
 function addSceneAfter(at,sy,c){
   commit();const b=mk('s','',[],sy||'',c||'');const ref=ed.children[at]||null;ed.insertBefore(b,ref);normalize();commit();changed(false);renderBoard();
   const k=[...ed.children].indexOf(b);const cards=[...$('#board').querySelectorAll('.cards')[1].querySelectorAll('.card2')];
