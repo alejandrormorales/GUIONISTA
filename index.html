@@ -151,14 +151,27 @@ body[data-view=cards] .scroll,body[data-view=bd] .scroll,body[data-view=cards] .
 .vbar .info{font-size:12.5px;color:var(--muted);margin-left:auto}
 .lane{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:6px 2px 8px;display:flex;align-items:center;gap:8px}
 #board{--cz:1}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(calc(230px*var(--cz)),1fr));gap:calc(12px*var(--cz));margin-bottom:22px}
+.card2{aspect-ratio:4/3;overflow:hidden;min-height:0!important}
+.card2 .hd{max-height:2.6em;overflow:hidden!important;flex:1 1 auto}
+.card2 .ch{flex:none}.card2 .ti,.card2 .pies,.card2 .ft{flex:none}
+.card2 .syv{flex:1 1 0;min-height:0;overflow:auto;overscroll-behavior:auto;padding:3px 4px;font:1em/1.4 Inter,sans-serif;scrollbar-width:thin;scrollbar-color:transparent transparent;cursor:default}
+.card2:hover .syv{scrollbar-color:var(--line) transparent}
+.card2 .syv::-webkit-scrollbar{width:6px}.card2 .syv::-webkit-scrollbar-thumb{background:transparent;border-radius:3px}.card2:hover .syv::-webkit-scrollbar-thumb{background:var(--line)}
+.card2 .syv.more{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 2.2em),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - 2.2em),transparent)}
+.card2 .syv p{margin:0}
+.card2 .syv ul{margin:0;padding-left:1.1em}.card2 .syv li{margin:0 0 .3em}.card2 .syv li::marker{color:var(--muted)}
+.card2 .syv.empty{color:var(--muted);opacity:.7}
+.card2.idea .sy{flex:1 1 0;min-height:0!important;height:auto!important;overflow:auto;scrollbar-width:thin}
+.card2 .pies{-webkit-line-clamp:1!important}
+.addcard{aspect-ratio:4/3;min-height:0!important}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(calc(250px*var(--cz)),1fr));gap:calc(12px*var(--cz));margin-bottom:22px}
 .card2{position:relative;background:var(--paper);color:var(--paper-ink);border:1px solid var(--line);border-top:5px solid var(--cc,var(--line));border-radius:10px;padding:.7em .77em .6em;display:flex;flex-direction:column;gap:.4em;min-height:11.5em;transition:opacity .15s;font-size:calc(13px*var(--cz))}
 .card2.blk{background:var(--accent-soft)}
 .card2.idea{border-style:dashed;border-top-style:solid;min-height:8.5em}
 .card2.dim{opacity:.28}
 .card2.dragging{opacity:.4}
 .card2.dropL::before,.card2.dropR::after{content:'';position:absolute;top:0;bottom:0;width:4px;border-radius:2px;background:var(--accent)}
-.card2.dropL::before{left:-8px}.card2.dropR::after{right:-8px}
+.card2.dropL::before{left:0}.card2.dropR::after{right:0}
 .card2 .ch{display:flex;gap:6px;align-items:flex-start}
 .card2 .num{padding-top:3px}
 .card2 .num{font:600 .92em Inter,sans-serif;color:var(--muted);min-width:18px;cursor:grab}
@@ -517,7 +530,7 @@ const TYPES={
   m:{n:'Bloque',ph:'SECUENCIA DE MONTAJE'},
   k:{n:'Acto',ph:'ACTO I'}
 };
-const APP_VERSION='1.9';
+const APP_VERSION='1.10';
 const ORDER=['s','a','c','p','d','t','h','m','k'];
 const ENTER={s:'a',a:'a',c:'d',p:'d',d:'a',t:'s',h:'a',m:'a',k:'s'};
 const TAB={a:'c',c:'t',d:'p',p:'d',s:'a',t:'s',h:'a',m:'s',k:'s'};
@@ -2157,7 +2170,7 @@ let boardFilter={ch:'',lc:''};
 const CZ=[[0.85,'S'],[1,'M'],[1.35,'L'],[1.8,'XL']];
 function cardZoom(){const v=parseFloat(LS.get('gn.cz'));return CZ.some(z=>z[0]===v)?v:1}
 function applyCardZoom(){$('#board').style.setProperty('--cz',cardZoom());document.querySelectorAll('#czBar button').forEach(b=>b.classList.toggle('on',+b.dataset.z===cardZoom()))}
-function regrowCards(){document.querySelectorAll('#board .card2 .sy,#board .card2 .hd').forEach(t=>{t.style.height='auto';t.style.height=t.scrollHeight+'px'})}
+function regrowCards(){document.querySelectorAll('#board .card2 .syv').forEach(x=>x.classList.toggle('more',x.scrollHeight-x.scrollTop-x.clientHeight>4));document.querySelectorAll('#board .card2:not(.idea) .hd').forEach(t=>{t.style.height='auto';t.style.height=t.scrollHeight+'px'})}
 function setCardZoom(v){LS.set('gn.cz',String(v));applyCardZoom();requestAnimationFrame(()=>requestAnimationFrame(regrowCards))}
 $('#board').addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey))return;e.preventDefault();const i=CZ.findIndex(z=>z[0]===cardZoom());const j=Math.max(0,Math.min(CZ.length-1,i+(e.deltaY<0?1:-1)));if(j!==i)setCardZoom(CZ[j][0])},{passive:false});
 function renderBoard(){
@@ -2203,15 +2216,18 @@ function sceneCard(u,k,us){
   const el=document.createElement('div');el.className='card2'+(u.t==='m'?' blk':'');el.draggable=true;el.dataset.k=k;if(u.c)el.style.setProperty('--cc',u.c);
   const lc=u.h?u.h.main:'';
   if((boardFilter.ch&&!u.chars.has(boardFilter.ch))||(boardFilter.lc&&lc!==boardFilter.lc))el.classList.add('dim');
-  el.innerHTML='<div class="ch"><span class="num" title="Arrastrar"></span><textarea class="hd" rows="1" spellcheck="false"></textarea></div><textarea class="sy" rows="3" placeholder="Sinopsis: qué pasa en esta escena…"></textarea><div class="ft"><span class="who"></span><span class="len"></span><span class="acts"><button data-a="l" title="Mover antes">◀</button><button data-a="r" title="Mover después">▶</button><button data-a="add" title="Nueva escena después">＋</button><button data-a="big" title="Ver en grande (o doble clic en la tarjeta)">⤢</button><button data-a="go" title="Ir al guion">↗</button><button data-a="del" title="Eliminar escena">🗑</button></span></div>';
+  el.innerHTML='<div class="ch"><span class="num" title="Arrastrar"></span><textarea class="hd" rows="1" spellcheck="false"></textarea></div><div class="syv" title="Doble clic para abrir la ficha y editar"></div><div class="ft"><span class="who"></span><span class="len"></span><span class="acts"><button data-a="l" title="Mover antes">◀</button><button data-a="r" title="Mover después">▶</button><button data-a="add" title="Nueva escena después">＋</button><button data-a="big" title="Ver en grande (o doble clic en la tarjeta)">⤢</button><button data-a="go" title="Ir al guion">↗</button><button data-a="del" title="Eliminar escena">🗑</button></span></div>';
   el.querySelector('.num').textContent=u.t==='m'?'▤':u.num;
   const hd=el.querySelector('.hd');hd.value=u.x;hd.placeholder=u.t==='m'?'SECUENCIA DE MONTAJE':(headingStyle()==='us'?'INT. LUGAR - DÍA':'INT.DÍA.LUGAR');
   const gh=()=>{hd.style.height='auto';hd.style.height=hd.scrollHeight+'px'};setTimeout(gh,0);
-  hd.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();sy.focus()}};
+  hd.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();hd.blur()}};
   hd.oninput=()=>{hd.value=hd.value.replace(/\n/g,' ');setText(u.b,up(hd.value));gh();changed(true)};
   hd.onchange=()=>{commit();stats()};
-  var sy=el.querySelector('.sy');sy.value=synToEdit(u.sy);setTimeout(()=>autoGrow(sy),0);
-  sy.oninput=()=>{const v=synFromEdit(sy.value);if(v)u.b.dataset.sy=v;else delete u.b.dataset.sy;autoGrow(sy);changed(true)};synKeys(sy,()=>sy.oninput());
+  const sy=el.querySelector('.syv');const L=synLines(u.sy);
+  if(!L.length){sy.classList.add('empty');sy.textContent='Sin sinopsis · doble clic para escribirla'}
+  else if(L.length===1){const pp=document.createElement('p');pp.textContent=L[0];sy.appendChild(pp)}
+  else{const ul=document.createElement('ul');L.forEach(x=>{const li=document.createElement('li');li.textContent=x;ul.appendChild(li)});sy.appendChild(ul)}
+  const fade=()=>sy.classList.toggle('more',sy.scrollHeight-sy.scrollTop-sy.clientHeight>4);sy.addEventListener('scroll',fade,{passive:true});setTimeout(fade,0);
   if(u.ti){const ti=document.createElement('input');ti.className='ti';ti.value=u.ti;ti.spellcheck=false;ti.oninput=()=>{if(ti.value.trim())u.b.dataset.ti=ti.value;else delete u.b.dataset.ti;changed(true)};el.insertBefore(ti,el.firstChild)}
   const openPies=getNotes(u.b).filter(n=>n.pie&&!n.done);
   if(openPies.length){const pd=document.createElement('div');pd.className='pies';pd.title=openPies.map(n=>n.x).join('\n');pd.textContent=openPies.map(n=>n.x).join(' · ');el.insertBefore(pd,el.querySelector('.ft'))}
@@ -2235,8 +2251,8 @@ function sceneCard(u,k,us){
 function ideaCard(idea,k){
   const el=document.createElement('div');el.className='card2 idea';if(idea.c)el.style.setProperty('--cc',idea.c);
   el.innerHTML='<textarea class="sy" rows="3" placeholder="Una idea, un momento, una imagen…"></textarea><div class="ft"><span class="acts"><button data-a="to" title="Convertir en escena al final del guion">→ Al guion</button><button data-a="del" title="Borrar idea">🗑</button></span></div>';
-  const t=el.querySelector('.sy');t.value=idea.x||'';setTimeout(()=>autoGrow(t),0);
-  t.oninput=()=>{idea.x=t.value;autoGrow(t);ideasChanged()};
+  const t=el.querySelector('.sy');t.value=idea.x||'';
+  t.oninput=()=>{idea.x=t.value;ideasChanged()};
   el.querySelector('.ft').insertBefore(colorDots(idea.c||'',c=>{idea.c=c;ideasChanged();renderBoard()}),el.querySelector('.acts'));
   el.querySelector('.acts').onclick=e=>{const a=e.target.closest('button');if(!a)return;
     if(a.dataset.a==='del'){cur.ideas.splice(k,1);ideasChanged();renderBoard()}
