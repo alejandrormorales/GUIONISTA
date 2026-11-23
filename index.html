@@ -230,6 +230,11 @@ body[data-view=cards] .scroll,body[data-view=bd] .scroll,body[data-view=cards] .
 #peText{min-height:46vh;font:14px/1.5 Georgia,serif}
 .pe-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .pe-row select{flex:1;min-width:200px;width:auto}
+/* escenas sin escribir */
+#ed .b.hid{display:none}
+.hidline{margin:2.2em 0 0;font:12px Inter,sans-serif;color:var(--muted);opacity:.55;cursor:pointer;user-select:none;-webkit-user-select:none;width:max-content}
+.hidline:hover{opacity:1}
+.ib.on{background:var(--accent-soft);color:var(--accent)}
 /* notas */
 .paper{position:relative}
 #ed .b.hn{background:rgba(255,190,0,.22);box-shadow:0 0 0 .2em rgba(255,190,0,.22);border-radius:2px}
@@ -331,6 +336,7 @@ body.focus .scroll{padding-top:10px}
     <button class="ib" id="bUndo" title="Deshacer (Ctrl/⌘+Z)"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg></button>
     <button class="ib" id="bRedo" title="Rehacer (Ctrl/⌘+Shift+Z)"><svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/></svg></button>
     <button class="ib" id="bSide" title="Escenas y personajes"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg><span class="lbl">Escenas</span></button>
+    <button class="ib" id="bHide" title="Ocultar las escenas del final que aún no has escrito"><svg viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3.2 3.9M6.2 6.2A17 17 0 0 0 2 12s4 7 10 7a9.6 9.6 0 0 0 4.2-1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg><span class="lbl">Sin escribir</span></button>
     <button class="ib" id="bFocus" title="Modo concentración"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span class="lbl">Concentración</span></button>
     <button class="ib" id="bFull" title="Pantalla completa"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 10V8h2M16 14v2h-2"/></svg></button>
     <button class="ib primary" id="bExport" title="Exportar"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span class="lbl">Exportar</span></button>
@@ -351,7 +357,7 @@ body.focus .scroll{padding-top:10px}
       <div class="fr rrow"><input type="text" id="fR" placeholder="Reemplazar por" autocomplete="off" spellcheck="false"><button class="fb" id="fRep1">Reemplazar</button><button class="fb" id="fRepAll">Todo</button></div>
     </div>
     <div class="scroll" id="scroll">
-      <div class="paper" id="paper"><div id="marks"></div><div id="ed" contenteditable="true" spellcheck="true" autocapitalize="sentences" role="textbox" aria-multiline="true" aria-label="Guion"></div></div>
+      <div class="paper" id="paper"><div id="marks"></div><div id="ed" contenteditable="true" spellcheck="true" autocapitalize="sentences" role="textbox" aria-multiline="true" aria-label="Guion"></div><div class="hidline" id="hidLine" hidden></div></div>
     </div>
   </div>
   <footer class="status" id="status"><span id="stType"><b>Escena</b></span><span id="stPage"></span><span id="stScene"></span><span id="stWords"></span><span id="stNotes" style="color:#b58500"></span><span class="sp"></span><span id="stSave"></span></footer>
@@ -370,6 +376,7 @@ body.focus .scroll{padding-top:10px}
   <button data-act="find">Buscar y reemplazar<small>Ctrl/⌘+F</small></button>
   <button data-act="versions">Versiones…</button>
   <button data-act="pie">🎲 Pie forzado<small>⌥P</small></button>
+  <button data-act="hide" id="mHide">Ocultar escenas sin escribir</button>
   <hr>
   <button data-act="import">Importar Fountain / FDX / TXT…</button>
   <hr>
@@ -500,7 +507,7 @@ const TYPES={
   h:{n:'Plano',ph:'PRIMER PLANO'},
   m:{n:'Bloque',ph:'SECUENCIA DE MONTAJE'}
 };
-const APP_VERSION='1.7';
+const APP_VERSION='1.8';
 const ORDER=['s','a','c','p','d','t','h','m'];
 const ENTER={s:'a',a:'a',c:'d',p:'d',d:'a',t:'s',h:'a',m:'a'};
 const TAB={a:'c',c:'t',d:'p',p:'d',s:'a',t:'s',h:'a',m:'s'};
@@ -521,7 +528,7 @@ const LS={
 };
 const jget=(k,d)=>{try{const v=LS.get(k);return v?JSON.parse(v):d}catch(e){return d}};
 
-let settings=Object.assign({paper:'a4',bold:false,nums:false,dark:false,pages:true,hstyle:'auto',autosync:true},jget('gn.settings',{}));
+let settings=Object.assign({paper:'a4',bold:false,nums:false,dark:false,pages:true,hstyle:'auto',autosync:true,hideEmpty:false},jget('gn.settings',{}));
 function saveSettings(){LS.set('gn.settings',JSON.stringify(settings));applySettings()}
 function applySettings(){
   ed.classList.toggle('boldsc',!!settings.bold);
@@ -1047,10 +1054,43 @@ function linesPerPage(){return settings.paper==='letter'?54:58}
 /* ---------------- estadísticas y navegador ---------------- */
 let statsT=null,lay=null,navTab='sc';
 function scheduleStats(){clearTimeout(statsT);statsT=setTimeout(stats,350)}
+/* escenas del final sin escribir: desde el primer encabezado posterior al último texto escrito */
+function trailingStart(arr){
+  let j=-1;for(let k=arr.length-1;k>=0;k--){const b=arr[k];if(b.t!=='s'&&b.t!=='m'&&String(b.x).trim()){j=k;break}}
+  if(j<0)return arr.length;
+  for(let k=j+1;k<arr.length;k++)if(arr[k].t==='s'||arr[k].t==='m')return k;
+  return arr.length;
+}
+const writtenPart=arr=>settings.hideEmpty?arr.slice(0,trailingStart(arr)):arr;
+let hidOpen=false,hidReveal=-1;
+function applyHide(arr){
+  const kids=ed.children,line=$('#hidLine');
+  const T=settings.hideEmpty?trailingStart(arr):kids.length;
+  let vis=T;
+  if(T<kids.length){
+    const c=getCaret();let keep=Math.max(c&&c.i!=null?c.i:-1,hidReveal);
+    if(keep>=T){vis=kids.length;for(let k=keep+1;k<kids.length;k++)if(kids[k].dataset.t==='s'||kids[k].dataset.t==='m'){vis=k;break}}
+  }
+  if(hidOpen)vis=kids.length;
+  for(let k=0;k<kids.length;k++)kids[k].classList.toggle('hid',k>=vis);
+  if(T>=kids.length){line.hidden=true;return}
+  const nums=[];let n=0;for(let k=0;k<arr.length;k++){if(arr[k].t==='s'&&arr[k].x.trim()){n++;if(k>=vis)nums.push(n)}}
+  const blocks=[];for(let k=vis;k<kids.length;k++)if(kids[k].dataset.t==='s'||kids[k].dataset.t==='m')blocks.push(k);
+  if(!blocks.length&&!hidOpen){line.hidden=true;return}
+  const cnt=hidOpen?arr.slice(T).filter(b=>b.t==='s').length:blocks.filter(k=>kids[k].dataset.t==='s').length;
+  line.hidden=false;
+  line.textContent=(hidOpen?'▾ ':'▸ ')+cnt+(cnt===1?' escena por escribir':' escenas por escribir')+(!hidOpen&&nums.length?' ('+(nums.length>1?nums[0]+'–'+nums[nums.length-1]:nums[0])+')':'')+(hidOpen?' · ocultar':'');
+}
+function toggleHideEmpty(){settings.hideEmpty=!settings.hideEmpty;hidOpen=false;hidReveal=-1;saveSettings();updHideBtn();stats();toast(settings.hideEmpty?'Las escenas del final sin escribir quedan ocultas (y fuera del PDF y del contador de páginas).':'Se muestran todas las escenas.')}
+function updHideBtn(){$('#bHide').classList.toggle('on',!!settings.hideEmpty);$('#mHide').textContent=(settings.hideEmpty?'✓ ':'')+'Ocultar escenas sin escribir'}
+$('#bHide').onclick=toggleHideEmpty;
+$('#hidLine').addEventListener('mousedown',e=>e.preventDefault());
+$('#hidLine').onclick=()=>{hidOpen=!hidOpen;applyHide(parseBody(serialize()));renderMarks()};
 function stats(){
-  const arr=parseBody(serialize());
+  const full=parseBody(serialize());const arr=writtenPart(full);
+  applyHide(full);
   lay=layout(arr,{L:linesPerPage(),bold:settings.bold});
-  lay.arr=arr;
+  lay.arr=full;
   let words=0;for(const b of arr){const m=b.x.match(/[^\s()]+/g);if(m)words+=m.length}
   $('#stWords').textContent=words.toLocaleString('es-ES')+' palabras';
   renderNav();updateStatusPos(lastCaret.i);updNoteCount();renderMarks();
@@ -1062,7 +1102,7 @@ function updateStatusPos(i){
   const pg=caretPage()||pageOf(i),tot=Math.max(1,lay.pages.length);
   $('#stPage').textContent='Pág. '+pg+' / '+tot+' · min '+pg;
   setPill(pg);
-  const s=sceneOf(i);$('#stScene').textContent=lay.scenes?('Escena '+(s||'–')+' / '+lay.scenes):'';
+  const s=sceneOf(i),scTot=lay.arr?lay.arr.filter(b=>b.t==='s'&&b.x.trim()).length:lay.scenes;$('#stScene').textContent=scTot?('Escena '+(s||'–')+' / '+scTot):'';
   if(navTab==='sc'){const cur=document.querySelector('.it.cur');const nx=document.querySelector('.it[data-sn="'+s+'"]');if(cur!==nx){cur&&cur.classList.remove('cur');nx&&nx.classList.add('cur')}}
 }
 function renderNav(){
@@ -1569,7 +1609,7 @@ function makePDF(s){
   if(pdfFonts){try{doc.addFileToVFS('CourierPrime-Regular.ttf',pdfFonts.r);doc.addFont('CourierPrime-Regular.ttf','CourierPrime','normal');doc.addFileToVFS('CourierPrime-Bold.ttf',pdfFonts.b);doc.addFont('CourierPrime-Bold.ttf','CourierPrime','bold');PF='CourierPrime'}catch(e){PF='courier'}}
   const H=doc.internal.pageSize.getHeight(),Wp=doc.internal.pageSize.getWidth();
   const L=linesPerPage();
-  const {pages}=layout(parseBody(s.body),{L,bold:settings.bold});
+  const {pages}=layout(writtenPart(parseBody(s.body)),{L,bold:settings.bold});
   const left=108,CW=7.2,right=left+60*CW,top=72;
   doc.setProperties({title:s.title||'Guion',author:s.author||'',creator:'Guionista'});
   doc.setFont(PF,'normal');doc.setFontSize(12);
@@ -2022,6 +2062,7 @@ document.addEventListener('click',e=>{
     case'find':openFind(false);break;
     case'versions':openVersions();break;
     case'pie':openPieFromCaret();break;
+    case'hide':toggleHideEmpty();break;
     case'help':openModal('mdHelp');break;
     case'drive':if(driveOn())confirmDlg('Google Drive','Conectado'+(LS.get('gn.email')?' como '+LS.get('gn.email'):'')+'. Los guiones se suben a la carpeta «Guionista» de tu Drive con Ctrl/⌘+S. Si desconectas, la app deja de subirlos; no se borra nada.','Desconectar',disconnectDrive);else uploadNow();break;
   }
@@ -2063,7 +2104,7 @@ function setView(v){
 function renderView(){if(view==='cards')renderBoard();else if(view==='bd')renderBreakdown()}
 $('#seg').addEventListener('mousedown',e=>e.preventDefault());
 $('#seg').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setView(b.dataset.v)});
-function goToBlock(i){setView('ed');const b=ed.children[i];if(!b)return;setCaret(i,0);scroll.scrollTop+=b.getBoundingClientRect().top-scroll.getBoundingClientRect().top-80;updateUI()}
+function goToBlock(i){if(ed.children[i]&&ed.children[i].classList.contains('hid')){hidReveal=i;applyHide(parseBody(serialize()))}setView('ed');const b=ed.children[i];if(!b)return;setCaret(i,0);scroll.scrollTop+=b.getBoundingClientRect().top-scroll.getBoundingClientRect().top-80;updateUI()}
 /* unidades: cada encabezado (escena o bloque) con todo lo que va hasta el siguiente */
 function units(){
   if(!lay)stats();
@@ -2286,7 +2327,7 @@ paper.addEventListener('mousedown',e=>{
 
 /* ---------------- inicio ---------------- */
 const SAMPLE=['s|INT. COCINA DE ANA - NOCHE','a|Una cocina pequeña iluminada solo por la luz de la nevera abierta. ANA (30) busca algo entre los táperes.','a|Suena el móvil sobre la encimera. Ella duda. Lo coge.','c|ANA','p|(susurrando)','d|¿Sabes qué hora es?','c|LUCAS (V.O.)','d|Lo siento. Tenía que contártelo antes de que lo supieras por otro.','a|Ana cierra la nevera. Oscuridad total.','t|CORTE A:','s|EXT. AZOTEA - CONTINUO','a|Escribe aquí tu guion. Pulsa Intro para pasar al siguiente elemento y Tab para cambiar de tipo.'].join('\n');
-applySettings();
+applySettings();updHideBtn();
 if(LS.get('gn.side')==='0'||(LS.get('gn.side')==null&&innerWidth<=1000))$('#side').classList.add('hidden');
 if(LS.get('gn.focus')==='1')document.body.classList.add('focus');
 fit();
