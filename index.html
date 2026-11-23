@@ -16,6 +16,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="stylesheet" href="fonts/fonts.css">
 <script defer src="vendor/jspdf.umd.min.js"></script>
+<script src="pies.js"></script>
 <style>
 :root{
   --bg:#e9e7e2; --ui:#fbfaf8; --ink:#1d1c1a; --muted:#77736b; --line:#dad6ce;
@@ -208,6 +209,27 @@ body[data-view=cards] .scroll,body[data-view=bd] .scroll,body[data-view=cards] .
 .fc-bar .sp{flex:1}
 .fc-bar .hint{font-size:12px;color:var(--muted)}
 @media (hover:none){.fc-bar .hint{display:none}}
+/* pie forzado */
+#mdPie .card{max-width:640px}
+.pie-sc{font:600 12.5px 'Courier Prime',Courier,monospace;text-transform:uppercase;color:var(--muted);margin:-6px 0 12px}
+.pie-opts{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pie-opts select{width:auto;flex:1;min-width:180px}
+.pie-opts .check{margin:0!important;white-space:nowrap}
+.pie-card{background:var(--paper);border:1px solid var(--line);border-left:5px solid #f2b705;border-radius:10px;padding:16px 18px;margin:14px 0 4px;min-height:96px}
+.pie-card .cat{font:600 11px Inter,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:#b58500;margin-bottom:6px}
+.pie-card .tx{font:19px/1.5 Georgia,'Times New Roman',serif;color:var(--ink)}
+.pie-card .tx b{font-family:'Courier Prime',Courier,monospace;font-size:.92em;font-weight:700;background:rgba(242,183,5,.18);padding:0 .15em;border-radius:3px}
+.pie-meta{font-size:12px;color:var(--muted);min-height:16px}
+.card2 .pies{font-size:.82em;line-height:1.35;color:#7a5a00;background:rgba(242,183,5,.16);border-radius:6px;padding:.35em .5em;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+[data-theme=dark] .card2 .pies{color:#f2c94c}
+.fc-pies{padding:6px 18px 0;display:flex;flex-direction:column;gap:6px}
+.fc-pie{display:flex;gap:10px;align-items:flex-start;background:rgba(242,183,5,.14);border-radius:8px;padding:8px 10px;font:15px/1.45 Georgia,serif}
+.fc-pie span{flex:1}.fc-pie.done span{text-decoration:line-through;color:var(--muted)}
+.fc-pie button{font:12px Inter,sans-serif;padding:3px 9px;border-radius:7px;border:1px solid var(--line);background:var(--ui);white-space:nowrap}
+#mdPieEd .card{max-width:720px}
+#peText{min-height:46vh;font:14px/1.5 Georgia,serif}
+.pe-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pe-row select{flex:1;min-width:200px;width:auto}
 /* notas */
 .paper{position:relative}
 #ed .b.hn{background:rgba(255,190,0,.22);box-shadow:0 0 0 .2em rgba(255,190,0,.22);border-radius:2px}
@@ -347,6 +369,7 @@ body.focus .scroll{padding-top:10px}
   <button data-act="settings">Ajustes</button>
   <button data-act="find">Buscar y reemplazar<small>Ctrl/⌘+F</small></button>
   <button data-act="versions">Versiones…</button>
+  <button data-act="pie">🎲 Pie forzado<small>⌥P</small></button>
   <hr>
   <button data-act="import">Importar Fountain / FDX / TXT…</button>
   <hr>
@@ -406,6 +429,7 @@ body.focus .scroll{padding-top:10px}
     <kbd>Shift+Tab</kbd><span>Cambia el tipo hacia atrás</span>
     <kbd>Alt/⌥ + 1…8</kbd><span>Escena, Acción, Personaje, Acotación, Diálogo, Transición, Plano, Bloque (títulos como SECUENCIA DE MONTAJE, que no cuentan como escena)</span>
     <kbd>Ctrl/⌘ + F</kbd><span>Buscar (y reemplazar) en todo el guion</span>
+    <kbd>Alt/⌥ + P</kbd><span>Pie forzado para la escena donde está el cursor</span>
     <kbd>Alt/⌥ + N</kbd><span>Añadir una nota en la línea actual (o sobre el texto seleccionado)</span>
     <kbd>Ctrl/⌘ + Shift + F</kbd><span>Modo concentración (Esc para salir)</span>
     <kbd>Ctrl/⌘ + S</kbd><span>Guardar y subir a Google Drive (también tocando el indicador de Drive de arriba)</span>
@@ -436,6 +460,24 @@ body.focus .scroll{padding-top:10px}
 
 <div class="modal" id="mdCard"><div class="card"></div></div>
 
+<div class="modal" id="mdPie"><div class="card">
+  <h2>🎲 Pie forzado</h2>
+  <div class="pie-sc" id="pieSc"></div>
+  <div class="pie-opts"><select id="pieCat"></select><label class="check"><input type="checkbox" id="pieAdapt"> Adaptar a esta escena</label></div>
+  <div class="pie-card"><div class="cat" id="pieCatL"></div><div class="tx" id="pieTx"></div></div>
+  <div class="pie-meta" id="pieMeta"></div>
+  <div class="row"><button class="btn" id="pieEdit" style="margin-right:auto">Editar la lista…</button><button class="btn" data-close>Cerrar</button><button class="btn" id="pieUse">Usar en esta escena</button><button class="btn primary" id="pieNext">Otra</button></div>
+</div></div>
+
+<div class="modal" id="mdPieEd"><div class="card">
+  <h2>Lista de pies forzados</h2>
+  <div class="pe-row"><select id="peCat"></select><button class="btn" id="peNew">＋ Categoría</button><button class="btn" id="peRen">Renombrar</button><button class="btn danger" id="peDel">Borrar</button></div>
+  <label>Una frase por línea. Puedes usar huecos que se rellenan con la escena: <b>{personaje}</b>, <b>{otro}</b>, <b>{tercero}</b> y <b>{lugar}</b>.</label>
+  <textarea id="peText" spellcheck="true"></textarea>
+  <p class="note" id="peInfo"></p>
+  <div class="row"><button class="btn" id="peReset" style="margin-right:auto">Restaurar la lista original</button><button class="btn" data-close>Cancelar</button><button class="btn primary" id="peSave">Guardar</button></div>
+</div></div>
+
 <div class="modal" id="mdConfirm"><div class="card">
   <h2 id="cfTitle">¿Seguro?</h2><p id="cfText" class="note" style="font-size:14px"></p>
   <div class="row"><button class="btn" data-close>Cancelar</button><button class="btn primary" id="cfOk">Aceptar</button></div>
@@ -458,7 +500,7 @@ const TYPES={
   h:{n:'Plano',ph:'PRIMER PLANO'},
   m:{n:'Bloque',ph:'SECUENCIA DE MONTAJE'}
 };
-const APP_VERSION='1.6';
+const APP_VERSION='1.7';
 const ORDER=['s','a','c','p','d','t','h','m'];
 const ENTER={s:'a',a:'a',c:'d',p:'d',d:'a',t:'s',h:'a',m:'a'};
 const TAB={a:'c',c:'t',d:'p',p:'d',s:'a',t:'s',h:'a',m:'s'};
@@ -864,6 +906,7 @@ ed.addEventListener('keydown',e=>{
   if(k==='Tab'){e.preventDefault();tabKey(e.shiftKey);return}
   if(k==='Enter'){e.preventDefault();doEnter();return}
   if(e.altKey&&!mod&&/^Digit[1-8]$/.test(e.code)){e.preventDefault();applyType(ORDER[+e.code.slice(5)-1]);return}
+  if(e.altKey&&!mod&&e.code==='KeyP'){e.preventDefault();openPieFromCaret();return}
   if(e.altKey&&!mod&&e.code==='KeyN'){e.preventDefault();openNoteFromCaret();return}
   if(mod&&!e.altKey&&k.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();return}
   if(mod&&e.shiftKey&&k.toLowerCase()==='f'){e.preventDefault();setFocus(!document.body.classList.contains('focus'));return}
@@ -925,10 +968,11 @@ function updateUI(fromSel){
 const els=$('#els');
 ORDER.forEach((t,i)=>{const b=document.createElement('button');b.className='el';b.dataset.t=t;b.innerHTML=TYPES[t].n+' <kbd>⌥'+(i+1)+'</kbd>';els.appendChild(b)});
 {const b=document.createElement('button');b.className='el nb';b.id='bNote';b.innerHTML='✎ Nota <kbd>⌥N</kbd>';els.appendChild(b)}
+{const b=document.createElement('button');b.className='el nb';b.id='bPie';b.innerHTML='🎲 Pie forzado <kbd>⌥P</kbd>';els.appendChild(b)}
 {const fx=document.createElement('div');fx.className='fx';fx.innerHTML='<span class="sv" id="fSave"></span><button class="el" id="bFull2">⛶ Pantalla completa</button><button class="el" id="bUnfocus">✕ Salir</button>';els.appendChild(fx)}
 function keepFocus(el){['pointerdown','mousedown'].forEach(ev=>el.addEventListener(ev,e=>{if(e.target.closest('button'))e.preventDefault()}))}
 keepFocus(els);keepFocus($('#bUndo').parentNode);
-els.addEventListener('click',e=>{const b=e.target.closest('.el');if(!b)return;if(b.id==='bUnfocus'){setFocus(false);return}if(b.id==='bFull2'){toggleFull();return}if(b.id==='bNote')openNoteFromCaret();else applyType(b.dataset.t)});
+els.addEventListener('click',e=>{const b=e.target.closest('.el');if(!b)return;if(b.id==='bUnfocus'){setFocus(false);return}if(b.id==='bFull2'){toggleFull();return}if(b.id==='bNote')openNoteFromCaret();else if(b.id==='bPie')openPieFromCaret();else applyType(b.dataset.t)});
 $('#bUndo').onclick=()=>undo();$('#bRedo').onclick=()=>redo();
 
 /* ---------------- maquetación (paginación estándar) ---------------- */
@@ -1109,6 +1153,103 @@ $('#fCase').onclick=()=>{fCase=!fCase;$('#fCase').classList.toggle('on',fCase);f
 $('#fRepT').onclick=()=>{$('#find').classList.toggle('rep');if($('#find').classList.contains('rep'))$('#fR').focus()};
 $('#fRep1').onclick=replaceOne;$('#fRepAll').onclick=replaceAll;
 document.addEventListener('keydown',e=>{const mod=e.metaKey||e.ctrlKey;if(mod&&!e.altKey&&!e.shiftKey&&(e.key||'').toLowerCase()==='f'){e.preventDefault();e.stopPropagation();openFind(false)}else if(mod&&!e.altKey&&(e.key||'').toLowerCase()==='h'&&e.ctrlKey){e.preventDefault();e.stopPropagation();openFind(true)}},true);
+
+/* ---------------- pie forzado ---------------- */
+function pieList(){const l=jget('gn.pies',null);return l&&l.cats&&Object.keys(l.cats).length?l.cats:(window.PIES_DEFAULT||{})}
+function pieAll(){const out=[];const c=pieList();for(const k in c)(c[k]||[]).forEach(t=>{t=String(t).trim();if(t)out.push({cat:k,t})});return out}
+const pieUsed=new Set();let pieCtx=null,pieCur=null,pieAfter=null;
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function sceneCtxAt(i){
+  const us=units();let u=null;for(const x of us){if(x.i<=i)u=x;else break}
+  if(!u&&us.length)u=us[0];if(!u)return null;
+  const h=u.h,ie=h?h.ie:'',tod=h?noAcc(h.tod||''):'';
+  const chars=[...u.chars.entries()].sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
+  return{u,chars,loc:h&&h.main?h.main.replace(/\u2024/g,'. '):'',isExt:/EXT/.test(ie)&&!/INT/.test(ie),isInt:/INT/.test(ie)&&!/EXT/.test(ie),night:/NOCHE|ANOCHECER|MADRUGADA/.test(tod),hasDlg:chars.length>0,label:u.x||(u.t==='m'?'Bloque sin título':'Escena sin encabezado')};
+}
+function pieNeed(t){return['{personaje}','{otro}','{tercero}'].filter(x=>t.includes(x)).length}
+function pieWeight(p,c){
+  if(!c)return 1;const t=p.t.toLowerCase();let w=1;const need=pieNeed(p.t);
+  if(need>c.chars.length)w*=c.chars.length?0.2:0.35;else if(need>=2)w*=1.4;
+  if(/climatolog|viento|lluvia|llover|nieve|tormenta|temperatura|paisaje|naturaleza|hoguera|animal/.test(t))w*=c.isExt?2.5:0.45;
+  if(/no hay luz|apaga la luz|enciende una luz|pantalla|fuego|parpadea|contraluz|sombra/.test(t))w*=c.night?2:0.9;
+  if(/ventana|umbral|puerta|espacio íntimo|pequeño|vacío/.test(t))w*=c.isInt?1.5:0.9;
+  if(/conversación|diálogo|hablan|dice |responde|frases|chiste|discut|despedida|interrogatorio|lee en voz/.test(t)&&!/sin diálogo|muda/.test(t))w*=c.hasDlg?1.3:0.3;
+  if(/sin diálogo|muda|solo a través/.test(t))w*=c.hasDlg?0.9:1.8;
+  return w;
+}
+function pieRender(t,c,adapt){
+  const names=adapt&&c?c.chars.slice():[];
+  for(let i=names.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[names[i],names[j]]=[names[j],names[i]]}
+  const map={'{personaje}':names[0],'{otro}':names[1],'{tercero}':names[2],'{lugar}':adapt&&c&&c.loc?'«'+c.loc+'»':null};
+  const gen={'{personaje}':['un personaje','ese personaje'],'{otro}':['otro personaje','ese otro'],'{tercero}':['un tercer personaje','ese tercero'],'{lugar}':['el espacio','ese espacio']};
+  const seen={};let html='',plain='';
+  t.split(/(\{personaje\}|\{otro\}|\{tercero\}|\{lugar\})/).forEach(part=>{
+    if(gen[part]){const v=map[part];if(v){html+='<b>'+esc(v)+'</b>';plain+=v}else{const g=gen[part][seen[part]?1:0];html+=esc(g);plain+=g}seen[part]=1}
+    else{html+=esc(part);plain+=part}});
+  const cap=x=>x.replace(/^(\s*(?:<b>)?)([a-záéíóúñü«])/,(m,a,b)=>a+b.toUpperCase());
+  return{html:cap(html),plain:cap(plain)};
+}
+function pieDraw(){
+  const cat=$('#pieCat').value,adapt=$('#pieAdapt').checked;
+  let pool=pieAll().filter(p=>!cat||p.cat===cat);if(!pool.length){$('#pieTx').textContent='No hay frases en esta categoría.';$('#pieCatL').textContent='';pieCur=null;return}
+  let fresh=pool.filter(p=>!pieUsed.has(p.cat+'|'+p.t));if(!fresh.length){pool.forEach(p=>pieUsed.delete(p.cat+'|'+p.t));fresh=pool}
+  const ws=fresh.map(p=>adapt?pieWeight(p,pieCtx):1);let r=Math.random()*ws.reduce((a,b)=>a+b,0),k=0;for(;k<fresh.length-1;k++){r-=ws[k];if(r<=0)break}
+  const p=fresh[k];pieUsed.add(p.cat+'|'+p.t);
+  const out=pieRender(p.t,pieCtx,adapt);pieCur={cat:p.cat,text:out.plain};
+  $('#pieCatL').textContent=p.cat;$('#pieTx').innerHTML=out.html;
+  const left=pool.filter(x=>!pieUsed.has(x.cat+'|'+x.t)).length;
+  $('#pieMeta').textContent=(adapt&&pieCtx&&!pieCtx.chars.length&&pieNeed(p.t)?'Esta escena aún no tiene diálogos, así que no sé qué personajes hay: uso «un personaje». ':'')+'Quedan '+left+' sin salir en esta selección.';
+}
+function openPie(i,after){
+  pieCtx=i==null?null:sceneCtxAt(i);pieAfter=after||null;
+  const sel=$('#pieCat'),prev=sel.value;sel.innerHTML='';const c=pieList();
+  sel.add(new Option('Todas las categorías ('+pieAll().length+')',''));for(const k in c)sel.add(new Option(k+' ('+(c[k]||[]).length+')',k));
+  if([...sel.options].some(o=>o.value===prev))sel.value=prev;
+  $('#pieAdapt').checked=LS.get('gn.pieAdapt')!=='0';$('#pieAdapt').disabled=!pieCtx;
+  $('#pieSc').textContent=pieCtx?pieCtx.label+(pieCtx.chars.length?' · '+pieCtx.chars.join(', '):''):'Sin escena';
+  $('#pieUse').disabled=!pieCtx;
+  openModal('mdPie');pieDraw();setTimeout(()=>$('#pieNext').focus(),30);
+}
+function openPieFromCaret(){const c=getCaret()||lastCaret;const i=c?(c.i!=null?c.i:0):0;if(view!=='ed'){const us=units();openPie(us.length?us[0].i:null);return}openPie(ed.children.length?i:null)}
+$('#pieNext').onclick=pieDraw;
+$('#pieCat').onchange=pieDraw;
+$('#pieAdapt').onchange=()=>{LS.set('gn.pieAdapt',$('#pieAdapt').checked?'1':'0');pieDraw()};
+$('#pieUse').onclick=()=>{
+  if(!pieCtx||!pieCur)return;const b=pieCtx.u.b;
+  commit();addNotes(b,[{id:noteId(),x:'🎲 '+pieCur.text,ts:Date.now(),pie:true}]);commit();changed(false);stats();
+  closeModal('mdPie');toast('Guardado como nota de la escena. Márcalo como cumplido cuando lo resuelvas.');
+  if(pieAfter)pieAfter();else if(view==='cards')renderBoard();
+};
+$('#mdPie').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.target.closest('select,button,input')){e.preventDefault();pieDraw()}});
+/* editor de la lista */
+let peWork=null,peCur='';
+function peOpen(){peWork=JSON.parse(JSON.stringify(pieList()));peCur=Object.keys(peWork)[0]||'';peFill();openModal('mdPieEd')}
+function peStore(){if(peCur&&peWork[peCur]!=null)peWork[peCur]=$('#peText').value.split('\n').map(x=>x.trim()).filter(Boolean)}
+function peFill(){const s=$('#peCat');s.innerHTML='';for(const k in peWork)s.add(new Option(k+' ('+peWork[k].length+')',k));s.value=peCur;$('#peText').value=(peWork[peCur]||[]).join('\n');
+  const n=Object.values(peWork).reduce((a,v)=>a+v.length,0);$('#peInfo').textContent=Object.keys(peWork).length+' categorías · '+n+' frases. '+(driveOn()?'Se guarda en tu Drive y la tendrás igual en el PC y en el iPad.':'Se guarda en este dispositivo (conecta Drive para tenerla también en los demás).')}
+$('#peCat').onchange=()=>{peStore();peCur=$('#peCat').value;peFill()};
+$('#peNew').onclick=()=>{peStore();let n='Nueva categoría',k=2;while(peWork[n])n='Nueva categoría '+(k++);peWork[n]=[];peCur=n;peFill();$('#peRen').click()};
+$('#peRen').onclick=()=>{peStore();openRenameText('Renombrar categoría',peCur,v=>{v=v.trim();if(!v||v===peCur)return;if(peWork[v]){toast('Ya existe una categoría con ese nombre.');return}const o={};for(const k in peWork)o[k===peCur?v:k]=peWork[k];peWork=o;peCur=v;peFill()})};
+$('#peDel').onclick=()=>{peStore();const n=(peWork[peCur]||[]).length;if(n&&!confirm('¿Borrar la categoría «'+peCur+'» y sus '+n+' frases?'))return;delete peWork[peCur];peCur=Object.keys(peWork)[0]||'';peFill()};
+$('#peReset').onclick=()=>{if(!confirm('¿Volver a la lista original? Se perderán tus cambios en la lista.'))return;peWork=JSON.parse(JSON.stringify(window.PIES_DEFAULT||{}));peCur=Object.keys(peWork)[0]||'';peFill()};
+$('#peSave').onclick=()=>{peStore();LS.set('gn.pies',JSON.stringify({updated:Date.now(),cats:peWork}));closeModal('mdPieEd');toast('Lista guardada.');syncPies(true).catch(()=>{});if($('#mdPie').classList.contains('open'))openPie(pieCtx?pieCtx.u.i:null,pieAfter)};
+$('#pieEdit').onclick=peOpen;
+function openRenameText(title,val,cb){const v=window.prompt(title,val);if(v!=null)cb(v)}
+/* sincronizar la lista con Drive (archivo pies-forzados.json en la carpeta Guionista) */
+async function syncPies(force){
+  if(!db||!tokenOk())return;
+  const local=jget('gn.pies',null);let fid=LS.get('gn.piesFile');
+  if(!fid){const fol=await folderId();const q=encodeURIComponent("'"+fol+"' in parents and name='pies-forzados.json' and trashed=false");const r=await(await gfetch(GAPI+'/files?q='+q+'&fields=files(id)&spaces=drive')).json();fid=r.files&&r.files[0]&&r.files[0].id;if(fid)LS.set('gn.piesFile',fid)}
+  const body=l=>JSON.stringify(l,null,1);
+  if(fid){
+    let ru=0;try{ru=(await remoteMeta(fid)).updated}catch(e){LS.del('gn.piesFile');return}
+    if(local&&local.updated>ru){const mp=multipart({appProperties:{gnKind:'pies',gnUpdated:String(local.updated)}},body(local));await gfetch(GUP+'/files/'+fid+'?uploadType=multipart&fields=id',{method:'PATCH',headers:{'Content-Type':mp.type},body:mp.body})}
+    else if(ru>(local?local.updated:0)){const t=await(await gfetch(GAPI+'/files/'+fid+'?alt=media')).text();const d=JSON.parse(t);if(d&&d.cats)LS.set('gn.pies',JSON.stringify(d))}
+  }else if(local){
+    const mp=multipart({name:'pies-forzados.json',mimeType:'application/json',parents:[await folderId()],appProperties:{gnKind:'pies',gnUpdated:String(local.updated)}},body(local));
+    const r=await(await gfetch(GUP+'/files?uploadType=multipart&fields=id',{method:'POST',headers:{'Content-Type':mp.type},body:mp.body})).json();if(r.id)LS.set('gn.piesFile',r.id);
+  }
+}
 
 /* ---------------- unificar lugares y personajes ---------------- */
 const baseName=x=>up(x).replace(/\s*\(.*\)\s*$/,'').trim();
@@ -1635,7 +1776,7 @@ async function remoteList(){
   const q=encodeURIComponent("'"+fid+"' in parents and trashed=false and mimeType!='application/vnd.google-apps.folder'");
   const out=[];let pt='';
   do{const r=await(await gfetch(GAPI+'/files?q='+q+'&fields=nextPageToken,files(id,name,modifiedTime,appProperties)&pageSize=200&spaces=drive'+(pt?'&pageToken='+encodeURIComponent(pt):''))).json();
-    for(const f of r.files||[]){const a=f.appProperties||{};out.push({id:a.gnId||('d_'+f.id),fileId:f.id,title:a.gnTitle||f.name.replace(/\.fountain$/i,''),updated:+a.gnUpdated||Date.parse(f.modifiedTime)||0})}
+    for(const f of r.files||[]){const a=f.appProperties||{};if(a.gnKind||/\.json$/i.test(f.name))continue;out.push({id:a.gnId||('d_'+f.id),fileId:f.id,title:a.gnTitle||f.name.replace(/\.fountain$/i,''),updated:+a.gnUpdated||Date.parse(f.modifiedTime)||0})}
     pt=r.nextPageToken}while(pt);
   return out;
 }
@@ -1743,6 +1884,7 @@ async function refreshRemote(adoptCurrent){
   if(!db||!tokenOk()){updCloud();return}
   try{
     const list=await remoteList();remoteKnown={};list.forEach(r=>remoteKnown[r.id]=r);
+    syncPies().catch(()=>{});
     if(cur&&!cur.fileId&&remoteKnown[cur.id])cur.fileId=remoteKnown[cur.id].fileId;
     if(cur&&adoptCurrent){
       const r=remoteKnown[cur.id];
@@ -1879,6 +2021,7 @@ document.addEventListener('click',e=>{
     case'import':fileIn.click();break;
     case'find':openFind(false);break;
     case'versions':openVersions();break;
+    case'pie':openPieFromCaret();break;
     case'help':openModal('mdHelp');break;
     case'drive':if(driveOn())confirmDlg('Google Drive','Conectado'+(LS.get('gn.email')?' como '+LS.get('gn.email'):'')+'. Los guiones se suben a la carpeta «Guionista» de tu Drive con Ctrl/⌘+S. Si desconectas, la app deja de subirlos; no se borra nada.','Desconectar',disconnectDrive);else uploadNow();break;
   }
@@ -1995,6 +2138,8 @@ function sceneCard(u,k,us){
   hd.onchange=()=>{commit();stats()};
   var sy=el.querySelector('.sy');sy.value=u.sy;setTimeout(()=>autoGrow(sy),0);
   sy.oninput=()=>{if(sy.value.trim())u.b.dataset.sy=sy.value.replace(/\n+/g,' ');else delete u.b.dataset.sy;autoGrow(sy);changed(true)};
+  const openPies=getNotes(u.b).filter(n=>n.pie&&!n.done);
+  if(openPies.length){const pd=document.createElement('div');pd.className='pies';pd.title=openPies.map(n=>n.x).join('\n');pd.textContent=openPies.map(n=>n.x).join(' · ');el.insertBefore(pd,el.querySelector('.ft'))}
   el.querySelector('.who').textContent=u.chars.size?[...u.chars.keys()].join(', '):(u.t==='m'?'':'Sin diálogos');
   el.querySelector('.len').textContent=u.eighths?('p. '+u.page+' · '+fmt8(u.eighths)+' pág.'):'';
   el.querySelector('.ft').insertBefore(colorDots(u.c,c=>{commit();if(c)u.b.dataset.c=c;else delete u.b.dataset.c;commit();changed(false);renderBoard()}),el.querySelector('.acts'));
@@ -2029,7 +2174,7 @@ function openCardView(k){
   const us=units();if(k<0||k>=us.length)return;fcK=k;const u=fcU=us[k];
   const box=$('#mdCard .card');box.style.setProperty('--cc',u.c||'var(--line)');
   const nsc=us.filter(x=>x.t==='s').length;
-  box.innerHTML='<div class="fc-top"><span class="num"></span><span class="pos"></span></div><textarea class="fc-hd" rows="1" spellcheck="false"></textarea><textarea class="fc-sy" placeholder="Sinopsis: qué pasa en esta escena…"></textarea><div class="fc-meta"></div><div class="fc-lbl">Así empieza en el guion</div><div class="fc-prev"></div><div class="fc-bar"><button class="btn" data-a="prev">← Anterior</button><button class="btn" data-a="next">Siguiente →</button><span class="hint">Alt/⌥ + ← → para pasar de tarjeta · Esc para cerrar</span><span class="sp"></span><button class="btn" data-a="go">Ir al guion</button><button class="btn primary" data-a="close">Cerrar</button></div>';
+  box.innerHTML='<div class="fc-top"><span class="num"></span><span class="pos"></span></div><textarea class="fc-hd" rows="1" spellcheck="false"></textarea><textarea class="fc-sy" placeholder="Sinopsis: qué pasa en esta escena…"></textarea><div class="fc-meta"></div><div class="fc-lbl">Así empieza en el guion</div><div class="fc-prev"></div><div class="fc-bar"><button class="btn" data-a="prev">← Anterior</button><button class="btn" data-a="next">Siguiente →</button><span class="hint">Alt/⌥ + ← → para pasar de tarjeta · Esc para cerrar</span><span class="sp"></span><button class="btn" data-a="pie">🎲 Pie forzado</button><button class="btn" data-a="go">Ir al guion</button><button class="btn primary" data-a="close">Cerrar</button></div>';
   box.querySelector('.num').textContent=u.t==='m'?'Bloque':'Escena '+u.num;
   box.querySelector('.pos').textContent=(k+1)+' de '+us.length+(u.eighths?' · p. '+u.page+' · '+fmt8(u.eighths)+' pág.':'');
   const hd=box.querySelector('.fc-hd'),sy=box.querySelector('.fc-sy');
@@ -2038,6 +2183,11 @@ function openCardView(k){
   hd.oninput=()=>{hd.value=hd.value.replace(/\n/g,' ');setText(u.b,up(hd.value));grow(hd);changed(true)};
   hd.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();sy.focus()}};
   sy.value=u.sy;sy.oninput=()=>{if(sy.value.trim())u.b.dataset.sy=sy.value.replace(/\n+/g,' ');else delete u.b.dataset.sy;grow(sy);changed(true)};
+  const fps=getNotes(u.b).filter(n=>n.pie);
+  if(fps.length){const pw=document.createElement('div');pw.className='fc-pies';
+    fps.forEach(n=>{const r=document.createElement('div');r.className='fc-pie'+(n.done?' done':'');r.innerHTML='<span></span><button></button>';r.querySelector('span').textContent=n.x;
+      const bt=r.querySelector('button');bt.textContent=n.done?'Reabrir':'Cumplido';bt.onclick=()=>{const arr=getNotes(u.b);const m=arr.find(z=>z.id===n.id);if(m){commit();m.done=!m.done;setNotes(u.b,arr);commit();changed(false);openCardView(fcK)}};pw.appendChild(r)});
+    box.insertBefore(pw,box.querySelector('.fc-meta'))}
   const meta=box.querySelector('.fc-meta');
   meta.innerHTML='<span>Personajes: <span class="who"></span></span><span class="sp" style="flex:1"></span>';
   meta.querySelector('.who').textContent=u.chars.size?[...u.chars.entries()].map(([n,c])=>n+(c>1?' ('+c+')':'')).join(', '):(u.t==='m'?'—':'sin diálogos');
@@ -2052,13 +2202,13 @@ function openCardView(k){
   else if(kids.filter(b=>textOf(b).trim()).length>shown){const m=document.createElement('div');m.className='more';m.textContent='… sigue en el guion';pv.appendChild(m)}
   box.querySelector('[data-a=prev]').disabled=k===0;box.querySelector('[data-a=next]').disabled=k===us.length-1;
   box.querySelector('.fc-bar').onclick=e=>{const a=e.target.closest('button');if(!a)return;const x=a.dataset.a;
-    if(x==='prev')openCardView(fcK-1);else if(x==='next')openCardView(fcK+1);else if(x==='close')closeCardView();else if(x==='go'){const i=u.i;closeCardView(true);goToBlock(i)}};
+    if(x==='prev')openCardView(fcK-1);else if(x==='next')openCardView(fcK+1);else if(x==='close')closeCardView();else if(x==='pie')openPie(u.i,()=>openCardView(fcK));else if(x==='go'){const i=u.i;closeCardView(true);goToBlock(i)}};
   if(!$('#mdCard').classList.contains('open'))openModal('mdCard');
   setTimeout(()=>{grow(hd);grow(sy)},0);
 }
 function closeCardView(noRender){closeModal('mdCard');fcK=-1;fcU=null;commit();if(!noRender&&view==='cards')renderBoard()}
 document.addEventListener('keydown',e=>{
-  if(!$('#mdCard').classList.contains('open'))return;
+  if(!$('#mdCard').classList.contains('open')||$('#mdPie').classList.contains('open')||$('#mdPieEd').classList.contains('open')||$('#mdConfirm').classList.contains('open'))return;
   if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeCardView();return}
   const inText=e.target.closest&&e.target.closest('textarea,input');
   if((e.key==='ArrowRight'||e.key==='ArrowLeft')&&(e.altKey||!inText)){e.preventDefault();e.stopPropagation();openCardView(fcK+(e.key==='ArrowRight'?1:-1))}
