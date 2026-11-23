@@ -1,5 +1,5 @@
 /* Guionista — service worker: funciona sin conexión */
-const VERSION='guionista-v8';
+const VERSION='guionista-v9';
 const ASSETS=['./','index.html','manifest.webmanifest','fonts/fonts.css',
   'fonts/courier-prime-latin-400-normal.woff2','fonts/courier-prime-latin-700-normal.woff2',
   'fonts/CourierPrime-Regular.ttf','fonts/CourierPrime-Bold.ttf','fonts/inter-latin-400-normal.woff2','fonts/inter-latin-500-normal.woff2','fonts/inter-latin-600-normal.woff2',
